@@ -474,20 +474,42 @@ select.input { cursor:pointer; }
       <!-- MÓDULOS -->
       <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px;">Módulos</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px;">
-        ${[
-          ['📊','Análises','Todos os perfis analisados','analises','rgba(37,99,235,.15)','#3b82f6'],
-          ['🔥','Mapa de Calor','Visualize posição no Maps','mapa-calor','rgba(147,51,234,.15)','#a855f7'],
-          ['🎯','Raio-X Local','Diagnóstico completo','raio-x','rgba(225,29,72,.15)','#f43f5e'],
-          ['💼','Meus Serviços','Edite preços e pacotes','servicos','rgba(124,58,237,.15)','#8b5cf6'],
-          ['📄','Propostas','Crie e envie propostas','propostas','rgba(234,88,12,.15)','#f97316'],
-          ['🚀','CRM / Vendas','Clientes e oportunidades','crm','rgba(21,128,61,.15)','#22c55e'],
-        ].map(([ic,title,desc,page,bg,color])=>`
-          <div onclick="goTo('${page}')" style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='${color}'" onmouseout="this.style.borderColor='var(--border)'">
-            <div style="width:36px;height:36px;border-radius:10px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px;">${ic}</div>
-            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">${title}</div>
-            <div style="font-size:11px;color:var(--text2);line-height:1.4;">${desc}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:10px;">→</div>
-          </div>`).join('')}
+        <div onclick="goTo('analises')" style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(37,99,235,.15);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px;">📊</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Análises</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.4;">Todos os perfis analisados</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:10px;">→</div>
+        </div>
+        <div onclick="goTo('mapa-calor')" style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='#a855f7'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(147,51,234,.15);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px;">🔥</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Mapa de Calor</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.4;">Visualize posição no Maps</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:10px;">→</div>
+        </div>
+        <div onclick="goTo('raio-x')" style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='#f43f5e'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(225,29,72,.15);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px;">🎯</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Raio-X Local</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.4;">Diagnóstico completo</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:10px;">→</div>
+        </div>
+        <div onclick="goTo('servicos')" style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='#8b5cf6'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(124,58,237,.15);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px;">💼</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Meus Serviços</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.4;">Edite preços e pacotes</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:10px;">→</div>
+        </div>
+        <div onclick="goTo('propostas')" style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='#f97316'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(234,88,12,.15);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px;">📄</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">Propostas</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.4;">Crie e envie propostas</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:10px;">→</div>
+        </div>
+        <div onclick="goTo('crm')" style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='#22c55e'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(21,128,61,.15);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px;">🚀</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;">CRM / Vendas</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.4;">Clientes e oportunidades</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:10px;">→</div>
+        </div>
       </div>
 
       <!-- ÚLTIMAS 5 ANÁLISES -->
