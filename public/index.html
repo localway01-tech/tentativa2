@@ -1,0 +1,2307 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Localway Rank</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117;
+  --bg2: #161b22;
+  --bg3: #1c2333;
+  --bg4: #21262d;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text2: #8b949e;
+  --text3: #6e7681;
+  --purple: #7c3aed;
+  --purple2: #8b5cf6;
+  --purple3: #a78bfa;
+  --green: #238636;
+  --green2: #3fb950;
+  --blue: #1f6feb;
+  --blue2: #388bfd;
+  --yellow: #d29922;
+  --yellow2: #e3b341;
+  --red: #da3633;
+  --red2: #f85149;
+  --orange: #e07b1a;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --sidebar-w: 220px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; overflow:hidden; }
+
+/* SIDEBAR */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  height: 100vh; position: fixed; left:0; top:0; z-index:100;
+  transition: width .3s;
+}
+.sidebar.collapsed { width: 56px; }
+.sidebar-logo {
+  padding: 16px 14px;
+  display: flex; align-items: center; gap:10px;
+  border-bottom: 1px solid var(--border);
+  min-height: 64px;
+}
+.logo-icon {
+  width:36px; height:36px; border-radius:10px;
+  background: linear-gradient(135deg,#7c3aed,#2563eb);
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; flex-shrink:0;
+}
+.logo-text { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; }
+.logo-text span { color:var(--purple3); }
+.sidebar-user {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  display:flex; align-items:center; gap:10px;
+}
+.user-avatar {
+  width:32px; height:32px; border-radius:50%;
+  background: linear-gradient(135deg,#7c3aed,#2563eb);
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:600; flex-shrink:0;
+}
+.user-info { overflow:hidden; }
+.user-name { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.user-email { font-size:10px; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.user-badge { font-size:9px; background:var(--blue); color:#fff; padding:1px 6px; border-radius:4px; display:inline-block; margin-top:2px; }
+.sidebar-nav { flex:1; overflow-y:auto; padding:8px 0; }
+.nav-item {
+  display:flex; align-items:center; gap:10px;
+  padding: 9px 14px; cursor:pointer;
+  border-radius: var(--radius-sm); margin: 1px 6px;
+  transition: background .15s; color:var(--text2);
+  font-size:13px; white-space:nowrap; overflow:hidden;
+  border: none; background:none; width:calc(100% - 12px); text-align:left;
+}
+.nav-item:hover { background:var(--bg3); color:var(--text); }
+.nav-item.active { background:rgba(124,58,237,.15); color:var(--purple3); }
+.nav-icon { font-size:16px; flex-shrink:0; width:20px; text-align:center; }
+.nav-label { white-space:nowrap; overflow:hidden; }
+.sidebar-bottom {
+  padding:8px 0; border-top:1px solid var(--border);
+}
+.sidebar-toggle {
+  position:absolute; right:-12px; top:72px;
+  width:24px; height:24px; border-radius:50%;
+  background:var(--bg2); border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:10px; z-index:101;
+}
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .logo-text,
+.sidebar.collapsed .user-info { display:none; }
+
+/* MAIN */
+.main {
+  margin-left: var(--sidebar-w);
+  flex:1; overflow-y:auto; height:100vh;
+  background:var(--bg);
+  transition: margin-left .3s;
+}
+.main.expanded { margin-left:56px; }
+
+/* PAGES */
+.page { display:none; padding:28px 32px; min-height:100vh; }
+.page.active { display:block; }
+
+/* CARDS */
+.card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--radius); padding:20px;
+}
+.card-sm { padding:14px 16px; }
+
+/* BUTTONS */
+.btn {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:9px 18px; border-radius:var(--radius-sm);
+  font-size:13px; font-weight:500; cursor:pointer;
+  border:none; transition:all .15s; text-decoration:none;
+}
+.btn-primary { background:linear-gradient(135deg,var(--purple),var(--blue)); color:#fff; }
+.btn-primary:hover { opacity:.9; transform:translateY(-1px); }
+.btn-secondary { background:var(--bg3); color:var(--text); border:1px solid var(--border); }
+.btn-secondary:hover { background:var(--bg4); }
+.btn-green { background:var(--green); color:#fff; }
+.btn-green:hover { background:#2ea043; }
+.btn-blue { background:var(--blue); color:#fff; }
+.btn-blue:hover { background:#2f7de0; }
+.btn-danger { background:transparent; color:var(--red2); border:1px solid var(--red2); font-size:12px; }
+.btn-danger:hover { background:rgba(218,54,51,.1); }
+.btn-lg { padding:14px 28px; font-size:15px; border-radius:10px; width:100%; justify-content:center; }
+
+/* INPUTS */
+.input-group { margin-bottom:16px; }
+.input-label { font-size:13px; font-weight:500; margin-bottom:6px; display:block; color:var(--text2); }
+.input {
+  width:100%; padding:12px 16px;
+  background:var(--bg); border:1.5px solid var(--border);
+  border-radius:var(--radius-sm); color:var(--text);
+  font-size:14px; font-family:inherit; transition:border .2s;
+  outline:none;
+}
+.input:focus { border-color:var(--purple); }
+.input::placeholder { color:var(--text3); }
+select.input { cursor:pointer; }
+
+/* BADGES */
+.badge {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 10px; border-radius:20px; font-size:11px; font-weight:500;
+}
+.badge-green { background:rgba(35,134,54,.2); color:var(--green2); }
+.badge-yellow { background:rgba(210,153,34,.2); color:var(--yellow2); }
+.badge-red { background:rgba(218,54,51,.2); color:var(--red2); }
+.badge-blue { background:rgba(31,111,235,.2); color:var(--blue2); }
+.badge-purple { background:rgba(124,58,237,.2); color:var(--purple3); }
+
+/* PILLAR CARDS */
+.pillar-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
+.pillar-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:16px; text-align:center; }
+.pillar-icon { font-size:24px; margin-bottom:8px; }
+.pillar-name { font-size:10px; font-weight:600; letter-spacing:.5px; color:var(--text2); text-transform:uppercase; margin-bottom:6px; }
+.pillar-score { font-size:28px; font-weight:700; margin-bottom:4px; }
+.pillar-bar { height:4px; background:var(--bg3); border-radius:2px; margin-bottom:6px; }
+.pillar-bar-fill { height:100%; border-radius:2px; transition:width .8s; }
+.pillar-pct { font-size:11px; color:var(--text2); }
+
+
+/* PILLAR DETAILS */
+.pillar-card { cursor:default; }
+.pillar-details { display:none; text-align:left; border-top:1px solid var(--border); padding-top:10px; margin-top:8px; }
+.pillar-details.open { display:block; }
+.criteria-label { font-size:9px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.6px; margin-bottom:8px; }
+.criteria-item { display:flex; align-items:flex-start; gap:7px; margin-bottom:8px; }
+.criteria-check { width:17px; height:17px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; flex-shrink:0; margin-top:1px; }
+.criteria-check.ok { background:rgba(35,134,54,.25); color:var(--green2); }
+.criteria-check.fail { background:rgba(218,54,51,.2); color:var(--red2); }
+.criteria-body { flex:1; min-width:0; }
+.criteria-name { font-size:11px; font-weight:600; color:var(--text); line-height:1.3; }
+.criteria-detail { font-size:10px; color:var(--text2); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.criteria-score-bar { display:flex; align-items:center; gap:5px; margin-top:3px; }
+.criteria-bar-track { flex:1; height:3px; background:var(--bg3); border-radius:2px; overflow:hidden; }
+.criteria-bar-fill { height:100%; border-radius:2px; transition:width .6s; }
+.criteria-pts { font-size:10px; font-weight:700; white-space:nowrap; }
+.toggle-details-btn { width:100%; font-size:10px; padding:4px 8px; background:var(--bg3); border:1px solid var(--border); border-radius:6px; color:var(--text2); cursor:pointer; margin-top:8px; transition:all .15s; }
+.toggle-details-btn:hover { background:var(--bg4); color:var(--text); }
+
+/* PROGRESS BARS */
+.prog-bar { margin-bottom:18px; }
+.prog-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.prog-label { font-size:13px; font-weight:500; display:flex; align-items:center; gap:6px; }
+.prog-track { height:14px; background:var(--bg3); border-radius:7px; position:relative; overflow:hidden; }
+.prog-fill { height:100%; border-radius:7px; display:flex; align-items:center; justify-content:flex-end; padding-right:8px; font-size:10px; font-weight:600; color:#fff; transition:width 1s; }
+.prog-sector { width:3px; height:100%; background:rgba(255,255,255,.3); position:absolute; }
+
+/* INSIGHTS */
+.insight-card {
+  border:1.5px solid; border-radius:var(--radius-sm);
+  padding:14px 16px; margin-bottom:10px;
+}
+.insight-card.warning { border-color:rgba(210,153,34,.4); background:rgba(210,153,34,.05); }
+.insight-card.success { border-color:rgba(35,134,54,.4); background:rgba(35,134,54,.05); }
+.insight-card.danger { border-color:rgba(218,54,51,.4); background:rgba(218,54,51,.05); }
+.insight-title { font-size:13px; font-weight:600; margin-bottom:4px; }
+.insight-desc { font-size:12px; color:var(--text2); margin-bottom:4px; }
+.insight-action { font-size:12px; color:var(--blue2); }
+
+/* ANALYSES LIST */
+.analyses-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.analysis-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--radius); padding:18px 20px; cursor:pointer;
+  transition:border-color .2s, transform .1s;
+}
+.analysis-card:hover { border-color:var(--purple); transform:translateY(-1px); }
+.analysis-name { font-size:15px; font-weight:600; margin-bottom:2px; }
+.analysis-cat { font-size:12px; color:var(--text2); margin-bottom:12px; }
+.analysis-score-big { font-size:28px; font-weight:700; float:right; margin-top:-36px; }
+.analysis-divider { height:1px; background:var(--border); margin:10px 0; }
+.analysis-meta { display:flex; align-items:center; justify-content:space-between; font-size:12px; }
+
+/* GEOGRID */
+.geogrid-config { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:20px; }
+.geogrid-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.cost-bar { background:var(--bg3); border-radius:var(--radius-sm); padding:12px 16px; display:flex; justify-content:space-between; align-items:center; margin-top:12px; }
+
+/* MAP */
+#map-container, #crm-map-container { width:100%; height:480px; border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); }
+.leaflet-container { background:var(--bg3); }
+
+/* RAIO-X */
+.raiox-wrap { display:grid; grid-template-columns:300px 1fr; gap:0; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.raiox-sidebar { background:var(--bg2); border-right:1px solid var(--border); padding:16px; overflow-y:auto; max-height:600px; }
+.competitor-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:var(--radius-sm);
+  cursor:pointer; transition:background .15s; margin-bottom:4px;
+}
+.competitor-item:hover { background:var(--bg3); }
+.competitor-item.active { background:rgba(124,58,237,.15); border:1px solid rgba(124,58,237,.3); }
+.competitor-rank {
+  width:28px; height:28px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:700; flex-shrink:0;
+}
+.rank-1 { background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; }
+.rank-2 { background:var(--bg3); color:var(--text2); }
+.rank-3 { background:var(--bg3); color:var(--text2); }
+.rank-me { background:rgba(124,58,237,.3); color:var(--purple3); border:1.5px solid var(--purple); }
+.rank-other { background:var(--bg4); color:var(--text2); }
+.comp-name { font-size:12px; font-weight:500; }
+.comp-stars { font-size:11px; color:var(--yellow2); }
+
+/* CRM / KANBAN */
+.kanban-board { display:flex; gap:12px; overflow-x:auto; padding-bottom:12px; }
+.kanban-col {
+  min-width:220px; flex-shrink:0;
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--radius); padding:12px;
+}
+.kanban-col-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.kanban-col-title { font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; }
+.kanban-col-count { font-size:11px; background:var(--bg3); padding:1px 7px; border-radius:10px; color:var(--text2); }
+.kanban-card {
+  background:var(--bg); border:1px solid var(--border);
+  border-radius:var(--radius-sm); padding:12px; margin-bottom:8px;
+  cursor:grab; transition:border-color .15s;
+}
+.kanban-card:hover { border-color:var(--purple); }
+.kanban-card-meta { font-size:10px; color:var(--text2); margin-bottom:4px; display:flex; justify-content:space-between; }
+.kanban-card-name { font-size:13px; font-weight:500; margin-bottom:6px; }
+.kanban-card-value { font-size:15px; font-weight:700; color:var(--green2); }
+.col-status-dot { width:8px; height:8px; border-radius:50%; }
+
+/* SERVICES */
+.service-section { margin-bottom:20px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.service-section-header { padding:16px 20px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; }
+.service-section-header:hover { background:var(--bg3); }
+.service-item { padding:14px 20px; border-top:1px solid var(--border); display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.service-item-info { flex:1; }
+.service-item-name { font-size:14px; font-weight:500; margin-bottom:4px; }
+.service-item-desc { font-size:12px; color:var(--text2); line-height:1.5; }
+.service-item-price { font-size:14px; font-weight:600; color:var(--green2); white-space:nowrap; }
+.service-actions { display:flex; gap:6px; align-items:center; }
+
+/* PROPOSALS */
+.proposal-item {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--radius); padding:16px 20px; margin-bottom:10px;
+  display:flex; align-items:center; gap:16px;
+}
+.proposal-avatar {
+  width:40px; height:40px; border-radius:10px;
+  background:linear-gradient(135deg,var(--purple),var(--blue));
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:700; flex-shrink:0;
+}
+
+/* LOADING */
+.loading-overlay {
+  position:fixed; inset:0; background:rgba(13,17,23,.9);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:1000; display:none;
+}
+.loading-spinner {
+  width:48px; height:48px; border:3px solid var(--border);
+  border-top-color:var(--purple); border-radius:50%;
+  animation:spin .8s linear infinite; margin-bottom:16px;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-text { font-size:14px; color:var(--text2); }
+
+/* TABS */
+.tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:20px; gap:0; }
+.tab {
+  padding:10px 20px; font-size:13px; font-weight:500;
+  cursor:pointer; border-bottom:2px solid transparent;
+  color:var(--text2); transition:all .15s;
+}
+.tab.active { color:var(--purple3); border-bottom-color:var(--purple3); }
+.tab:hover { color:var(--text); }
+
+/* CRM VIEW TOGGLES */
+.view-toggle { display:flex; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:3px; gap:3px; }
+.view-btn { padding:6px 10px; border-radius:6px; cursor:pointer; font-size:13px; border:none; background:none; color:var(--text2); }
+.view-btn.active { background:var(--bg3); color:var(--text); }
+
+/* METRIC CARDS */
+.metric-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+.metric-card { border-radius:var(--radius); padding:20px; }
+.metric-card.orange { background:linear-gradient(135deg,#d97706,#b45309); }
+.metric-card.teal { background:linear-gradient(135deg,#0d9488,#0f766e); }
+.metric-card.blue { background:linear-gradient(135deg,#2563eb,#1d4ed8); }
+.metric-card.purple { background:linear-gradient(135deg,#7c3aed,#6d28d9); }
+.metric-label { font-size:12px; font-weight:500; opacity:.85; display:flex; align-items:center; gap:6px; }
+.metric-value { font-size:32px; font-weight:700; margin:4px 0 2px; }
+.metric-meta { font-size:11px; opacity:.75; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+/* SECTION HEADER */
+.section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.section-title { font-size:22px; font-weight:700; display:flex; align-items:center; gap:10px; }
+.section-sub { font-size:13px; color:var(--text2); margin-top:4px; }
+
+/* HEATMAP GRID */
+.heatmap-grid { display:grid; gap:4px; justify-content:center; margin:16px 0; }
+.hm-cell {
+  width:44px; height:44px; border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; color:#fff; cursor:pointer;
+  transition:transform .15s; position:relative;
+}
+.hm-cell:hover { transform:scale(1.1); z-index:10; }
+.hm-1 { background:#22c55e; }
+.hm-2 { background:#4ade80; }
+.hm-3 { background:#86efac; color:#166534; }
+.hm-4 { background:#fde047; color:#713f12; }
+.hm-5 { background:#fb923c; }
+.hm-6 { background:#f87171; }
+.hm-7 { background:#ef4444; }
+.hm-8 { background:#dc2626; }
+.hm-9 { background:#b91c1c; }
+.hm-10 { background:#991b1b; }
+.hm-out { background:#374151; color:#6b7280; font-size:11px; }
+.hm-me { box-shadow:0 0 0 3px #fff, 0 0 0 5px var(--purple); }
+
+/* TOOLTIP */
+.tooltip-hm { position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); background:var(--bg4); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:11px; white-space:nowrap; z-index:100; pointer-events:none; display:none; }
+.hm-cell:hover .tooltip-hm { display:block; }
+
+/* AI CHAT BUBBLE */
+.ai-bubble { background:rgba(124,58,237,.1); border:1px solid rgba(124,58,237,.3); border-radius:var(--radius); padding:14px 16px; margin-top:12px; font-size:13px; line-height:1.6; }
+.ai-bubble-header { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--purple3); font-weight:600; margin-bottom:6px; }
+
+@keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+.page.active { animation:fadeIn .2s ease; }
+
+.search-bar { display:flex; gap:10px; margin-bottom:16px; }
+.search-input { flex:1; padding:10px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text); font-size:13px; outline:none; }
+.search-input:focus { border-color:var(--purple); }
+
+.profile-header { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
+.verified-badge { position:absolute; top:10px; right:10px; background:#2563eb; color:#fff; font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; }
+
+.filter-tabs { display:flex; gap:8px; margin-bottom:16px; }
+.filter-tab { padding:6px 14px; border-radius:20px; font-size:12px; font-weight:500; cursor:pointer; border:1px solid var(--border); background:var(--bg2); color:var(--text2); transition:all .15s; }
+.filter-tab.active { background:var(--purple); border-color:var(--purple); color:#fff; }
+
+.map-radius-btn { padding:6px 12px; border-radius:6px; font-size:12px; font-weight:500; cursor:pointer; border:1px solid var(--border); background:var(--bg3); color:var(--text2); transition:all .15s; }
+.map-radius-btn.active { background:var(--purple); border-color:var(--purple); color:#fff; }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loadingText">Analisando perfil...</div>
+</div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-toggle" onclick="toggleSidebar()">◀</div>
+  <div class="sidebar-logo">
+    <div class="logo-icon">📊</div>
+    <div class="logo-text">Localway <span>Rank</span><br><small style="font-size:9px;font-weight:400;color:var(--text2)">Business Analytics</small></div>
+  </div>
+  <div class="sidebar-user">
+    <div class="user-avatar" id="userAvatarSidebar">J</div>
+    <div class="user-info">
+      <div class="user-name" id="userNameSidebar">Jose Ricardo Gomes</div>
+      <div class="user-email" id="userEmailSidebar">jricardo@localway.com.br</div>
+      <div class="user-badge">Business</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="nav-item active" onclick="goTo('dashboard')"><span class="nav-icon">📈</span><span class="nav-label">Dashboard</span></button>
+    <button class="nav-item" onclick="goTo('nova-analise')"><span class="nav-icon">✨</span><span class="nav-label">Nova Análise</span></button>
+    <button class="nav-item" onclick="goTo('analises')"><span class="nav-icon">📋</span><span class="nav-label">Análises</span></button>
+    <button class="nav-item" onclick="goTo('geogrid')"><span class="nav-icon">📍</span><span class="nav-label">Mapa de Calor</span></button>
+    <button class="nav-item" onclick="goTo('raiox')"><span class="nav-icon">🎯</span><span class="nav-label">Raio-X Local</span></button>
+    <button class="nav-item" onclick="goTo('servicos')"><span class="nav-icon">💼</span><span class="nav-label">Meus Serviços</span></button>
+    <button class="nav-item" onclick="goTo('propostas')"><span class="nav-icon">📄</span><span class="nav-label">Propostas</span></button>
+    <button class="nav-item" onclick="goTo('crm')"><span class="nav-icon">🚀</span><span class="nav-label">CRM / Vendas</span></button>
+  </nav>
+  <div class="sidebar-bottom">
+    <button class="nav-item" onclick="toggleDarkMode()"><span class="nav-icon">🌙</span><span class="nav-label">Modo Escuro</span></button>
+    <button class="nav-item" style="color:var(--red2)"><span class="nav-icon">🚪</span><span class="nav-label">Sair</span></button>
+    <button class="nav-item" onclick="toggleSidebar()"><span class="nav-icon">←</span><span class="nav-label">Recolher</span></button>
+  </div>
+</aside>
+
+<main class="main" id="mainContent">
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="section-header">
+      <div>
+        <div class="section-title">📈 Suas Análises</div>
+        <div class="section-sub" id="dashAnalysisCount">0 perfis analisados</div>
+      </div>
+      <button class="btn btn-primary" onclick="goTo('nova-analise')">+ Nova Análise</button>
+    </div>
+    <div class="search-bar">
+      <input type="text" class="search-input" placeholder="🔍  Buscar por nome ou categoria..." oninput="filterAnalyses(this.value)">
+    </div>
+    <div class="filter-tabs">
+      <div class="filter-tab active" onclick="setSortOrder('recent',this)">📅 Mais Recentes</div>
+      <div class="filter-tab" onclick="setSortOrder('score',this)">⭐ Melhor Score</div>
+    </div>
+    <div class="analyses-grid" id="analysesList"></div>
+    <div id="noAnalyses" style="text-align:center;padding:60px 20px;color:var(--text2)">
+      <div style="font-size:48px;margin-bottom:16px">📊</div>
+      <div style="font-size:16px;font-weight:600;margin-bottom:8px">Nenhuma análise ainda</div>
+      <div style="font-size:13px;margin-bottom:20px">Comece analisando um perfil do Google Business</div>
+      <button class="btn btn-primary" onclick="goTo('nova-analise')">✨ Fazer primeira análise</button>
+    </div>
+  </div>
+
+  <!-- NOVA ANÁLISE -->
+  <div class="page" id="page-nova-analise">
+    <div style="max-width:600px; margin:0 auto;">
+      <div style="text-align:center; margin-bottom:40px;">
+        <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#7c3aed,#2563eb);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 16px;">📍</div>
+        <div style="font-size:28px; font-weight:800; margin-bottom:8px;">Nova Análise</div>
+        <div style="color:var(--text2); font-size:14px;">Cole o link do Google Maps para analisar qualquer perfil</div>
+      </div>
+
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:32px;margin-bottom:16px;">
+        <div class="input-group" style="margin-bottom:8px;">
+          <label class="input-label" style="font-size:12px;text-transform:uppercase;letter-spacing:.8px;">Link do Google Maps</label>
+          <div style="position:relative;">
+            <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none;">🔗</span>
+            <input type="text" class="input" id="businessUrl"
+              placeholder="https://maps.app.goo.gl/..."
+              style="padding-left:42px;font-size:15px;height:52px;border-radius:10px;"
+              onkeydown="if(event.key==='Enter') startAnalysis()">
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--text2);">
+            <span style="color:var(--green2);">✓</span> Links curtos (maps.app.goo.gl)
+            <span style="margin:0 6px;color:var(--border);">·</span>
+            <span style="color:var(--green2);">✓</span> Links longos (google.com/maps)
+            <span style="margin:0 6px;color:var(--border);">·</span>
+            <span style="color:var(--green2);">✓</span> Botão Compartilhar
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-lg" onclick="startAnalysis()" style="margin-top:20px;height:52px;font-size:15px;font-weight:600;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);">
+          ✨ Analisar Perfil
+        </button>
+        <div style="text-align:center; margin-top:16px;">
+          <button class="btn" style="background:none;color:var(--text3);font-size:12px;" onclick="goTo('dashboard')">← Voltar</button>
+        </div>
+      </div>
+
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px;"><span>💡</span> Como pegar o link</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="width:24px;height:24px;border-radius:50%;background:rgba(124,58,237,.2);color:var(--purple3);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">1</div>
+            <div style="font-size:13px;color:var(--text2);">Abra o <strong style="color:var(--text)">Google Maps</strong> e encontre o negócio</div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="width:24px;height:24px;border-radius:50%;background:rgba(124,58,237,.2);color:var(--purple3);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">2</div>
+            <div style="font-size:13px;color:var(--text2);">Clique em <strong style="color:var(--text)">Compartilhar → Copiar link</strong></div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <div style="width:24px;height:24px;border-radius:50%;background:rgba(124,58,237,.2);color:var(--purple3);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">3</div>
+            <div style="font-size:13px;color:var(--text2);">Cole aqui e clique em <strong style="color:var(--text)">Analisar</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTADO -->
+  <div class="page" id="page-resultado">
+    <div id="resultado-content"></div>
+  </div>
+
+  <!-- ANÁLISES -->
+  <div class="page" id="page-analises">
+    <div class="section-header">
+      <div>
+        <div class="section-title">📋 Suas Análises</div>
+        <div class="section-sub" id="analysesCount2">0 perfis analisados</div>
+      </div>
+      <button class="btn btn-primary" onclick="goTo('nova-analise')">+ Nova Análise</button>
+    </div>
+    <div class="search-bar">
+      <input type="text" class="search-input" placeholder="🔍  Buscar..." oninput="filterAnalyses(this.value)">
+    </div>
+    <div class="filter-tabs">
+      <div class="filter-tab active" onclick="setSortOrder('recent',this)">📅 Mais Recentes</div>
+      <div class="filter-tab" onclick="setSortOrder('score',this)">⭐ Melhor Score</div>
+    </div>
+    <div class="analyses-grid" id="analysesList2"></div>
+  </div>
+
+  <!-- GEOGRID -->
+  <div class="page" id="page-geogrid">
+    <div class="section-header">
+      <div>
+        <div class="section-title">📍 Geogrid Rank Tracker</div>
+        <div class="section-sub">Mapeie sua visibilidade local por palavra-chave.</div>
+      </div>
+    </div>
+    <div class="geogrid-config">
+      <div style="font-size:15px; font-weight:600; margin-bottom:16px;">Configuração</div>
+      <div class="input-group">
+        <label class="input-label">Palavra-chave</label>
+        <input type="text" class="input" id="ggKeyword" placeholder="ex: pet shop fortaleza">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Link do Perfil GBP</label>
+        <input type="text" class="input" id="ggUrl" placeholder="ex: https://maps.app.goo.gl/...">
+      </div>
+      <div class="geogrid-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="input-group">
+          <label class="input-label">Espaçamento (km)</label>
+          <input type="number" class="input" id="ggSpacing" value="1" min="0.5" max="5" step="0.5">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Grade</label>
+          <select class="input" id="ggGrid" onchange="updateGridCost()">
+            <option value="3">3×3 (9 pontos)</option>
+            <option value="5">5×5 (25 pontos)</option>
+            <option value="7">7×7 (49 pontos)</option>
+          </select>
+        </div>
+      </div>
+      <div class="cost-bar">
+        <div>
+          <div style="font-size:12px; color:var(--text2);">Custo: <span id="ggCost" style="color:var(--text); font-weight:600;">9 requisições</span></div>
+        </div>
+        <button class="btn btn-primary" onclick="startGeogrid()">🔍 Iniciar Varredura</button>
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:15px; font-weight:600; margin-bottom:4px;">Mapa de Calor</div>
+      <div style="font-size:12px; color:var(--text2); margin-bottom:16px;">Posição nos resultados locais em cada ponto do grid</div>
+      <div id="gg-heatmap-wrap" style="display:none;">
+        <div style="display:flex; justify-content:center; margin-bottom:12px; gap:8px; flex-wrap:wrap;">
+          <span class="badge badge-green">1-3: Top Local Pack</span>
+          <span class="badge badge-yellow">4-10: Visível</span>
+          <span class="badge badge-red">11+: Pouco visível</span>
+        </div>
+        <div id="gg-heatmap" class="heatmap-grid"></div>
+        <div class="ai-bubble" id="gg-ai-analysis" style="display:none;">
+          <div class="ai-bubble-header">🤖 Análise da IA</div>
+          <div id="gg-ai-text"></div>
+        </div>
+      </div>
+      <div id="gg-map-container" style="width:100%;height:400px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);"></div>
+    </div>
+  </div>
+
+  <!-- RAIO-X -->
+  <div class="page" id="page-raiox">
+    <div class="section-header">
+      <div>
+        <div class="section-title">🗺️ Raio-X Local</div>
+        <div class="section-sub">Visualize seu posicionamento geográfico no GBP</div>
+      </div>
+    </div>
+    <div class="raiox-wrap">
+      <div class="raiox-sidebar">
+        <div style="font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;">ANÁLISE</div>
+        <select class="input" id="raioxAnalysisSelect" onchange="loadRaioxForAnalysis(this.value)" style="margin-bottom:14px; font-size:12px;">
+          <option value="">Selecione uma análise</option>
+        </select>
+        <div style="font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;">BUSCAR</div>
+        <input type="text" class="input" id="raioxSearch" placeholder="🔍 Nome ou endereço..." style="margin-bottom:14px; font-size:12px;" oninput="filterCompetitors(this.value)">
+        <div style="font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;">RAIO DE BUSCA</div>
+        <div style="display:flex; gap:6px; margin-bottom:14px;">
+          <button class="map-radius-btn active" onclick="setRadius(3,this)">3 km</button>
+          <button class="map-radius-btn" onclick="setRadius(5,this)">5 km</button>
+          <button class="map-radius-btn" onclick="setRadius(10,this)">10 km</button>
+        </div>
+        <div style="font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;">CATEGORIA</div>
+        <input type="text" class="input" id="raioxCategory" placeholder="Pet Shop" style="margin-bottom:14px; font-size:12px;">
+        <div id="raioxRankInfo" style="font-size:12px; color:var(--text2); margin-bottom:12px; line-height:1.6;"></div>
+        <div id="competitorsList"></div>
+      </div>
+      <div id="raioxMap" style="height:600px;"></div>
+    </div>
+  </div>
+
+  <!-- SERVIÇOS -->
+  <div class="page" id="page-servicos">
+    <div class="section-header">
+      <div>
+        <div class="section-title">💼 Meus Serviços</div>
+        <div class="section-sub">Configure os serviços e valores para gerar propostas</div>
+      </div>
+      <button class="btn btn-secondary" onclick="resetServices()">↺ Resetar para Padrão</button>
+    </div>
+    <div id="servicesSections"></div>
+  </div>
+
+  <!-- PROPOSTAS -->
+  <div class="page" id="page-propostas">
+    <div class="section-header">
+      <div>
+        <div class="section-title">📄 Minhas Propostas</div>
+        <div class="section-sub">Gerencie suas propostas comerciais</div>
+      </div>
+      <button class="btn btn-primary" onclick="generateNewProposal()">✨ Gerar Nova Proposta</button>
+    </div>
+    <div id="proposalsList"></div>
+    <div id="noProposals" style="text-align:center;padding:60px;color:var(--text2);">
+      <div style="font-size:40px;margin-bottom:12px">📄</div>
+      <div>Nenhuma proposta gerada ainda</div>
+    </div>
+  </div>
+
+  <!-- CRM -->
+  <div class="page" id="page-crm">
+    <div class="section-header">
+      <div>
+        <div class="section-title">🚀 Funil de Vendas</div>
+        <div class="section-sub">Gerencie suas oportunidades de venda.</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div class="view-toggle">
+          <button class="view-btn active" onclick="setCrmView('board',this)">⊞</button>
+          <button class="view-btn" onclick="setCrmView('metrics',this)">☰</button>
+          <button class="view-btn" onclick="setCrmView('map',this)">🗺</button>
+        </div>
+        <button class="btn btn-primary" onclick="openNewLead()">+ Novo Lead</button>
+      </div>
+    </div>
+    <div id="crm-metrics" style="display:none;">
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px;">
+        <button class="filter-tab" onclick="setCrmPeriod('today',this)">Hoje</button>
+        <button class="filter-tab" onclick="setCrmPeriod('week',this)">Semana</button>
+        <button class="filter-tab active" onclick="setCrmPeriod('month',this)">Mês</button>
+        <button class="filter-tab" onclick="setCrmPeriod('year',this)">Ano</button>
+      </div>
+      <div class="metric-grid">
+        <div class="metric-card orange"><div class="metric-label">👤 Leads</div><div class="metric-value" id="crmLeadsCount">0</div></div>
+        <div class="metric-card teal"><div class="metric-label">$ Faturamento</div><div class="metric-value" id="crmRevenue">R$ 0</div></div>
+        <div class="metric-card blue"><div class="metric-label">📈 Ticket Médio</div><div class="metric-value" id="crmTicket">R$ 0</div></div>
+        <div class="metric-card purple"><div class="metric-label">🎯 Conversão</div><div class="metric-value" id="crmConversion">0%</div></div>
+      </div>
+      <div class="card">
+        <div style="font-size:14px;font-weight:600;margin-bottom:16px;">📊 Histórico de Vendas</div>
+        <div style="position:relative;height:220px;"><canvas id="salesChart"></canvas></div>
+      </div>
+    </div>
+    <div id="crm-board"><div class="kanban-board" id="kanbanBoard"></div></div>
+    <div id="crm-map-view" style="display:none;">
+      <div id="crm-map-container" style="height:520px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);"></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ===================== STATE =====================
+let analyses = JSON.parse(localStorage.getItem('gbp_analyses') || '[]');
+let services = JSON.parse(localStorage.getItem('gbp_services') || 'null') || getDefaultServices();
+let proposals = JSON.parse(localStorage.getItem('gbp_proposals') || '[]');
+let crmLeads = JSON.parse(localStorage.getItem('gbp_crm') || '[]');
+let currentAnalysis = null;
+let sortOrder = 'recent';
+let searchQuery = '';
+let searchTab = 'name';
+let crmView = 'board';
+let raioxMap = null;
+let ggMap = null;
+let crmMapInstance = null;
+let raioxMarkers = [];
+let salesChartInstance = null;
+
+window.onload = function() {
+  renderDashboard();
+  renderServices();
+  renderProposals();
+  renderKanban();
+  updateCrmMetrics();
+  populateRaioxSelect();
+};
+
+// ===================== NAVIGATION =====================
+function goTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(item => {
+    if(item.getAttribute('onclick') && item.getAttribute('onclick').includes("'"+page+"'")) item.classList.add('active');
+  });
+  if(page === 'geogrid') initGeoGridMap();
+  if(page === 'raiox') initRaioxMap();
+  if(page === 'crm' && crmView === 'map') initCrmMap();
+  if(page === 'analises') { renderAnalysesList('analysesList2'); document.getElementById('analysesCount2').textContent = analyses.length + ' perfis analisados'; }
+  if(page === 'dashboard') renderDashboard();
+}
+
+function toggleSidebar() {
+  const s = document.getElementById('sidebar');
+  const m = document.getElementById('mainContent');
+  s.classList.toggle('collapsed');
+  m.classList.toggle('expanded');
+  document.querySelector('.sidebar-toggle').textContent = s.classList.contains('collapsed') ? '▶' : '◀';
+}
+
+function setSearchTab(tab, el) {
+  searchTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('search-name-form').style.display = tab === 'name' ? 'block' : 'none';
+  document.getElementById('search-url-form').style.display = tab === 'url' ? 'block' : 'none';
+}
+
+// ===================== ANALYSIS =====================
+async function startAnalysis() {
+  if(false) {
+    // modo nome desativado
+  } else {
+    const url = document.getElementById('businessUrl').value.trim();
+    if(!url) { alert('Cole a URL do Google Maps'); return; }
+    showLoading('Resolvendo link...');
+    try {
+      updateLoading('Conectando ao Google Maps...');
+      const placeIdFromProxy = await resolveUrlViaProxy(url);
+      if(placeIdFromProxy) {
+        updateLoading('Link resolvido! Coletando dados...');
+        const details = await getPlaceDetails(placeIdFromProxy);
+        if(details) {
+          const analysis = buildAnalysis(details);
+          analyses.unshift(analysis); saveAnalyses(); currentAnalysis = analysis;
+          hideLoading(); renderResult(analysis); goTo('resultado'); return;
+        }
+      }
+      const extracted = parseGoogleMapsUrl(url);
+      if(extracted) {
+        updateLoading('Buscando: ' + extracted.substring(0,30) + '...');
+        const placeData = await searchPlace(extracted);
+        if(placeData) {
+          updateLoading('Coletando dados...');
+          const details = await getPlaceDetails(placeData.place_id);
+          const analysis = buildAnalysis(details);
+          analyses.unshift(analysis); saveAnalyses(); currentAnalysis = analysis;
+          hideLoading(); renderResult(analysis); goTo('resultado'); return;
+        }
+      }
+      hideLoading();
+      alert('Não consegui encontrar este negócio.\n\nDicas:\n• Use o botão "Compartilhar → Copiar link" no Google Maps\n• Ou copie a URL completa da barra de endereço\n\nExemplo de link válido:\nhttps://maps.app.goo.gl/...');
+    } catch(e) { hideLoading(); alert('Erro ao processar link: ' + e.message); }
+  }
+}
+
+function parseGoogleMapsUrl(url) {
+  // URL longa: /maps/place/NOME/
+  const longMatch = url.match(/google\.com\/maps\/place\/([^/@?&]+)/);
+  if(longMatch && longMatch[1]) {
+    const decoded = decodeURIComponent(longMatch[1].replace(/\+/g,' ')).replace(/\+/g,' ');
+    if(decoded.length > 2 && !/^[A-Za-z0-9]{20,}$/.test(decoded)) return decoded;
+  }
+  // Query param ?q=
+  const qMatch = url.match(/[?&]q=([^&]+)/);
+  if(qMatch) return decodeURIComponent(qMatch[1].replace(/\+/g,' '));
+  return null;
+}
+
+async function resolveUrlViaProxy(url) {
+  try {
+    const resp = await fetch('/api/places?action=resolve_url&url=' + encodeURIComponent(url));
+    if(!resp.ok) return null;
+    const data = await resp.json();
+    if(data.place_id) return data.place_id;
+    if(data.results && data.results.length > 0) return data.results[0].place_id;
+  } catch(e) {}
+  return null;
+}
+
+async function searchPlace(query) {
+  const resp = await fetch(`/api/places?action=search&query=${encodeURIComponent(query)}`);
+  const data = await resp.json();
+  if(data.results && data.results.length > 0) return data.results[0];
+  return null;
+}
+
+async function getPlaceDetails(placeId) {
+  const resp = await fetch(`/api/places?action=details&place_id=${placeId}`);
+  const data = await resp.json();
+  return data.result;
+}
+
+function buildAnalysis(place) {
+  const score = calculateScore(place);
+  const now = new Date();
+  return {
+    id: Date.now(),
+    place_id: place.place_id,
+    name: place.name,
+    address: place.formatted_address || '',
+    phone: place.formatted_phone_number || '',
+    website: place.website || '',
+    rating: place.rating || 0,
+    total_reviews: place.user_ratings_total || 0,
+    types: place.types || [],
+    category: formatCategory(place.types),
+    business_status: place.business_status || '',
+    opening_hours: place.opening_hours || null,
+    photos: place.photos || [],
+    photo_count: (place.photos || []).length,
+    reviews: (place.reviews || []).slice(0,5),
+    geometry: place.geometry || null,
+    url: place.url || '',
+    score: score.total,
+    score_label: getScoreLabel(score.total),
+    pillars: score.pillars,
+    pillars_detail: score.pillars_detail || {},
+    insights: score.insights,
+    // campos extras para score de otimização
+    editorial_summary: place.editorial_summary || null,
+    delivery: place.delivery || false,
+    dine_in: place.dine_in || false,
+    takeout: place.takeout || false,
+    serves_beer: place.serves_beer || false,
+    wheelchair_accessible_entrance: place.wheelchair_accessible_entrance || false,
+    date: now.toLocaleDateString('pt-BR', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+    timestamp: now.toISOString()
+  };
+}
+
+function calculateScore(place) {
+  const insights = { warnings: [], strengths: [], opportunities: [] };
+  const pillars_detail = {};
+
+  // ── REPUTAÇÃO (max 25) ──────────────────────────────────────────
+  const rating = place.rating || 0;
+  const totalReviews = place.user_ratings_total || 0;
+
+  // Nota média (max 12)
+  let notaPts = rating >= 4.9 ? 12 : rating >= 4.5 ? 10 : rating >= 4.0 ? 8 : rating >= 3.5 ? 5 : rating >= 3.0 ? 3 : rating > 0 ? 1 : 0;
+
+  // Volume de reviews (max 8)
+  let reviewPts = totalReviews >= 500 ? 8 : totalReviews >= 200 ? 7 : totalReviews >= 100 ? 6 : totalReviews >= 50 ? 4 : totalReviews >= 20 ? 3 : totalReviews >= 5 ? 2 : totalReviews > 0 ? 1 : 0;
+
+  // Recência (max 5): usa reviews retornadas pela API
+  let recenciaPts = 0, recenciaDesc = 'Sem avaliações';
+  const reviews = place.reviews || [];
+  if(reviews.length > 0) {
+    const latestTime = Math.max(...reviews.map(r => r.time || 0));
+    const daysSince = (Date.now()/1000 - latestTime) / 86400;
+    if(daysSince <= 7)        { recenciaPts = 5; recenciaDesc = Math.round(daysSince) + ' dias atrás'; }
+    else if(daysSince <= 30)  { recenciaPts = 4; recenciaDesc = Math.round(daysSince) + ' dias atrás'; }
+    else if(daysSince <= 90)  { recenciaPts = 3; recenciaDesc = Math.round(daysSince/30) + ' meses atrás'; }
+    else if(daysSince <= 180) { recenciaPts = 2; recenciaDesc = Math.round(daysSince/30) + ' meses atrás'; }
+    else if(daysSince <= 365) { recenciaPts = 1; recenciaDesc = Math.round(daysSince/30) + ' meses atrás'; }
+    else                      { recenciaPts = 0; recenciaDesc = '+1 ano atrás'; }
+  } else if(totalReviews > 0) {
+    recenciaPts = 3; recenciaDesc = 'Dado não disponível via API';
+  }
+
+  const reputacao = Math.min(notaPts + reviewPts + recenciaPts, 25);
+  pillars_detail.reputacao = [
+    { name:'Nota média',       detail: rating > 0 ? rating.toFixed(1)+' ⭐' : 'Sem nota',      pts:notaPts,   max:12, ok: notaPts >= 8 },
+    { name:'Volume de reviews',detail: totalReviews+' avaliações',                               pts:reviewPts, max:8,  ok: reviewPts >= 4 },
+    { name:'Recência',         detail: recenciaDesc,                                              pts:recenciaPts, max:5, ok: recenciaPts >= 3 },
+  ];
+
+  if(rating >= 4.5) insights.strengths.push({ title:'Nota média: '+rating+' ⭐', desc:'Excelente reputação!', color:'success' });
+  else if(rating < 4.0 && rating > 0) insights.warnings.push({ title:'Nota baixa: '+rating+' ⭐', desc:'Impacto: ALTO — reduz drasticamente cliques.', action:'→ Implemente captação de avaliações com NFC/QR Code', color:'danger' });
+  if(totalReviews >= 100) insights.strengths.push({ title:totalReviews+' avaliações', desc:'Forte prova social!', color:'success' });
+  else if(totalReviews < 20) insights.warnings.push({ title:'Apenas '+totalReviews+' avaliações', desc:'Impacto: ALTO — poucos reviews reduzem autoridade.', action:'→ Use NFC/QR Code para solicitar avaliações', color:'warning' });
+
+  // ── AUTORIDADE DIGITAL (max 25) ──────────────────────────────────
+  const hasWebsite = !!(place.website);
+  const hasPhone   = !!(place.formatted_phone_number);
+  const hasAddress = !!(place.formatted_address);
+  const hasName    = !!(place.name);
+
+  // Citações NAP — nome + endereço + telefone (max 15)
+  let napPts = 0;
+  if(hasName)    napPts += 5;
+  if(hasAddress) napPts += 5;
+  if(hasPhone)   napPts += 5;
+  const napDesc = [hasName?'Nome':'—', hasAddress?'Endereço':'—', hasPhone?'Telefone':'—'].join(', ');
+
+  // Saúde do Website (max 5)
+  const websitePts = hasWebsite ? 5 : 0;
+
+  // PageSpeed Mobile (max 5) — Places API não expõe, estimamos
+  const pagespeedPts = hasWebsite ? 2 : 0;
+
+  const autoridadeDigital = Math.min(napPts + websitePts + pagespeedPts, 25);
+  pillars_detail.autoridade_digital = [
+    { name:'Citações NAP',    detail: napDesc,                                                   pts:napPts,      max:15, ok: napPts >= 10 },
+    { name:'Saúde do Website',detail: hasWebsite ? place.website.substring(0,30)+'...' : 'Sem website', pts:websitePts, max:5, ok: websitePts >= 5 },
+    { name:'PageSpeed Mobile',detail: hasWebsite ? 'Website disponível' : 'Sem website',         pts:pagespeedPts, max:5, ok: pagespeedPts >= 4 },
+  ];
+
+  if(hasWebsite) insights.strengths.push({ title:'Website cadastrado', desc:'Aumenta autoridade digital.', color:'success' });
+  else insights.opportunities.push({ title:'Sem website cadastrado', desc:'Impacto: MÉDIO — website aumenta autoridade local.', action:'→ Crie site focado em SEO local', color:'warning' });
+
+  // ── OTIMIZAÇÃO (max 20) ──────────────────────────────────────────
+  const hasCategoria = !!(place.types && place.types.length > 0);
+  const catPts    = hasCategoria ? 10 : 0;
+  const secTypes  = place.types ? Math.max(0, place.types.length - 1) : 0;
+  const secCatPts = secTypes >= 3 ? 5 : secTypes >= 1 ? 3 : 0;
+
+  const hasDesc   = !!(place.editorial_summary && place.editorial_summary.text);
+  const descPts   = hasDesc ? 3 : 0;
+
+  const attrFields = [place.delivery, place.dine_in, place.takeout, place.serves_beer, place.wheelchair_accessible_entrance, place.reservable, place.serves_breakfast, place.serves_lunch, place.serves_dinner];
+  const attrCount = attrFields.filter(Boolean).length;
+  const attrPts   = attrCount >= 3 ? 2 : attrCount >= 1 ? 1 : 0;
+
+  const otimizacao = Math.min(catPts + secCatPts + descPts + attrPts, 20);
+  pillars_detail.otimizacao = [
+    { name:'Categoria principal',    detail: hasCategoria ? formatCategory(place.types) : 'Não definida', pts:catPts,    max:10, ok: catPts >= 10 },
+    { name:'Categorias secundárias', detail: secTypes+' categorias secundárias',                          pts:secCatPts, max:5,  ok: secCatPts >= 3 },
+    { name:'Descrição',              detail: hasDesc ? 'Preenchida' : 'Não preenchida',                   pts:descPts,   max:3,  ok: hasDesc },
+    { name:'Atributos',              detail: attrCount+' atributos detectados',                           pts:attrPts,   max:2,  ok: attrPts >= 2 },
+  ];
+
+  const hasHours = !!(place.opening_hours);
+  if(hasHours) insights.strengths.push({ title:'Horários cadastrados', desc:'Informações completas aumentam conversão.', color:'success' });
+  else insights.warnings.push({ title:'Sem horários cadastrados', desc:'Impacto: ALTO — clientes não sabem quando visitar.', action:'→ Adicione horários de funcionamento completos', color:'danger' });
+
+  // ── SAÚDE CADASTRAL (max 15) ─────────────────────────────────────
+  const telPts  = hasPhone   ? 4 : 0;
+  const endPts  = hasAddress ? 4 : 0;
+  const sitePts = hasWebsite ? 4 : 0;
+  const horaPts = hasHours   ? 3 : 0;
+  const saudeCadastral = Math.min(telPts + endPts + sitePts + horaPts, 15);
+  pillars_detail.saude_cadastral = [
+    { name:'Telefone', detail: hasPhone   ? place.formatted_phone_number : 'Não cadastrado', pts:telPts,  max:4, ok:hasPhone },
+    { name:'Endereço', detail: hasAddress ? 'Completo'                   : 'Não cadastrado', pts:endPts,  max:4, ok:hasAddress },
+    { name:'Website',  detail: hasWebsite ? 'Cadastrado'                 : 'Não cadastrado', pts:sitePts, max:4, ok:hasWebsite },
+    { name:'Horários', detail: hasHours   ? 'Completos'                  : 'Não cadastrados',pts:horaPts, max:3, ok:hasHours },
+  ];
+
+  if(!hasPhone) insights.opportunities.push({ title:'Sem telefone cadastrado', desc:'Impacto: MÉDIO — dificulta contato direto.', action:'→ Adicione telefone e WhatsApp', color:'warning' });
+
+  // ── MÍDIA (max 15) ────────────────────────────────────────────────
+  // IMPORTANTE: Places API (Legacy) retorna no máximo 10 referências de foto.
+  // Se retornou 10, o negócio certamente tem MUITO mais fotos no perfil real.
+  const photoRefs = (place.photos || []).length;
+  const apiMaxPhotos = photoRefs >= 10; // API atingiu o limite — negócio tem 10+ fotos
+
+  let volumePts = 0, volumeDesc = '';
+  if(apiMaxPhotos) {
+    volumePts = 9; // 10 refs = certamente 20+ fotos reais
+    volumeDesc = '10+ fotos (limite da API — perfil tem mais)';
+  } else if(photoRefs >= 7) { volumePts = 7; volumeDesc = photoRefs+' fotos'; }
+  else if(photoRefs >= 4)   { volumePts = 5; volumeDesc = photoRefs+' fotos'; }
+  else if(photoRefs >= 1)   { volumePts = 3; volumeDesc = photoRefs+' fotos'; }
+  else                      { volumePts = 0; volumeDesc = 'Sem fotos detectadas'; }
+
+  // Tour 360° — não exposto pela Places Legacy API
+  const tour360Pts = 0;
+
+  const midia = Math.min(volumePts + tour360Pts, 15);
+  pillars_detail.midia = [
+    { name:'Volume de Mídia', detail: volumeDesc,                pts:volumePts, max:11, ok: volumePts >= 7 },
+    { name:'Tour 360°',       detail:'Não detectável via API',   pts:0,         max:4,  ok: false },
+  ];
+
+  if(photoRefs >= 7 || apiMaxPhotos) insights.strengths.push({ title:(apiMaxPhotos?'10+':photoRefs)+' fotos no perfil', desc:'Boa presença visual!', color:'success' });
+  else if(photoRefs >= 1) insights.warnings.push({ title:'Poucas fotos ('+photoRefs+' detectadas)', desc:'Impacto: ALTO — mais fotos aumentam engajamento.', action:'→ Publique pelo menos 20 fotos profissionais', color:'warning' });
+  else insights.warnings.push({ title:'Sem fotos detectadas', desc:'Impacto: CRÍTICO — perfil sem fotos perde 40% dos cliques.', action:'→ Adicione fotos imediatamente', color:'danger' });
+
+  const total = reputacao + autoridadeDigital + otimizacao + saudeCadastral + midia;
+  return {
+    total,
+    pillars: {
+      reputacao:          { score:reputacao,         max:25, pct:Math.round(reputacao/25*100) },
+      autoridade_digital: { score:autoridadeDigital, max:25, pct:Math.round(autoridadeDigital/25*100) },
+      otimizacao:         { score:otimizacao,        max:20, pct:Math.round(otimizacao/20*100) },
+      saude_cadastral:    { score:saudeCadastral,    max:15, pct:Math.round(saudeCadastral/15*100) },
+      midia:              { score:midia,             max:15, pct:Math.round(midia/15*100) },
+    },
+    pillars_detail,
+    insights
+  };
+}
+
+function formatCategory(types) {
+  if(!types || !types.length) return 'Negócio';
+  const map = {
+    'pet_store':'Pet Shop','restaurant':'Restaurante','food':'Alimentação','bakery':'Padaria',
+    'cafe':'Cafeteria','bar':'Bar','beauty_salon':'Salão de Beleza','hair_care':'Cabeleireiro',
+    'gym':'Academia','health':'Saúde','doctor':'Médico','dentist':'Dentista','pharmacy':'Farmácia',
+    'hospital':'Hospital','store':'Loja','clothing_store':'Moda','shoe_store':'Calçados',
+    'electronics_store':'Eletrônicos','furniture_store':'Móveis','car_repair':'Mecânica',
+    'car_dealer':'Concessionária','real_estate_agency':'Imobiliária','lawyer':'Advocacia',
+    'accounting':'Contabilidade','lodging':'Hospedagem','hotel':'Hotel','glass':'Vidraçaria',
+    'hardware_store':'Material de Construção'
+  };
+  for(const t of types) { if(map[t]) return map[t]; }
+  return types[0].replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function getScoreLabel(score) {
+  if(score >= 80) return 'Excelente';
+  if(score >= 60) return 'Bom';
+  if(score >= 31) return 'Fraco';
+  return 'Crítico';
+}
+
+function getScoreColor(score) {
+  if(score >= 80) return '#22c55e';
+  if(score >= 60) return '#f59e0b';
+  if(score >= 31) return '#f97316';
+  return '#ef4444';
+}
+
+function buildGaugeSVG(score) {
+  const s = Math.max(0, Math.min(100, score));
+  const rotation = -180 + (s / 100) * 180;
+  const color = s < 25 ? '#ef4444' : s < 50 ? '#f97316' : s < 75 ? '#eab308' : s < 90 ? '#84cc16' : '#22c55e';
+  let ticks = '';
+  for (let i = 0; i <= 10; i++) {
+    const angle = 180 - (i / 10) * 180;
+    const rad = angle * Math.PI / 180;
+    const cx = 180, cy = 180, r = 150;
+    const x1 = cx + (r-27) * Math.cos(rad), y1 = cy - (r-27) * Math.sin(rad);
+    const x2 = cx + (r-17) * Math.cos(rad), y2 = cy - (r-17) * Math.sin(rad);
+    const lx = cx + (r-47) * Math.cos(rad), ly = cy - (r-47) * Math.sin(rad);
+    ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="rgba(255,255,255,0.4)" stroke-width="2"/>`;
+    ticks += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="12" fill="rgba(255,255,255,0.6)" text-anchor="middle" dominant-baseline="middle">${i*10}</text>`;
+  }
+  return `<svg viewBox="0 0 360 245" style="max-width:320px;width:100%;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="arcGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+        <stop offset="0%" stop-color="#ef4444"/>
+        <stop offset="25%" stop-color="#f97316"/>
+        <stop offset="50%" stop-color="#eab308"/>
+        <stop offset="75%" stop-color="#84cc16"/>
+        <stop offset="100%" stop-color="#22c55e"/>
+      </linearGradient>
+    </defs>
+    <path d="M 30 180 A 150 150 0 0 1 330 180" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="24" stroke-linecap="round"/>
+    <path d="M 30 180 A 150 150 0 0 1 330 180" fill="none" stroke="url(#arcGradient)" stroke-width="24" stroke-linecap="round"/>
+    <text x="42" y="145" font-size="10" font-weight="700" fill="#ef4444" text-anchor="middle">CRÍTICO</text>
+    <text x="108" y="62" font-size="10" font-weight="700" fill="#f97316" text-anchor="middle">FRACO</text>
+    <text x="222" y="62" font-size="10" font-weight="700" fill="#84cc16" text-anchor="middle">BOM</text>
+    <text x="310" y="145" font-size="10" font-weight="700" fill="#22c55e" text-anchor="middle">EXCELENTE</text>
+    ${ticks}
+    <g transform="rotate(${rotation}, 180, 180)">
+      <line x1="180" y1="180" x2="180" y2="52" stroke="white" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="180" cy="180" r="10" fill="#1a1a24" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+      <circle cx="180" cy="180" r="5" fill="white"/>
+    </g>
+    <text x="180" y="218" text-anchor="middle" font-size="44" font-weight="700" fill="${color}" font-family="Inter,sans-serif">${Math.round(s)}</text>
+    <text x="180" y="236" text-anchor="middle" font-size="11" fill="rgba(255,255,255,0.5)" font-family="Inter,sans-serif" letter-spacing="2">SCORE</text>
+  </svg>`;
+}
+
+// ===================== RENDER RESULT =====================
+function renderResult(a) {
+  const photoUrl = a.photos && a.photos.length > 0
+    ? `/api/places?action=photo&ref=${a.photos[0].photo_reference}&maxwidth=600`
+    : null;
+  const starsHtml = '★'.repeat(Math.round(a.rating)) + '☆'.repeat(5-Math.round(a.rating));
+  const sectorAvg = { reputacao:16, autoridade_digital:14, otimizacao:15, saude_cadastral:11, midia:9 };
+
+  document.getElementById('resultado-content').innerHTML = `
+    <div style="max-width:1100px;margin:0 auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <button class="btn btn-secondary" onclick="goTo('dashboard')">← Voltar</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" onclick="exportPDF()">📄 Exportar PDF</button>
+          <button class="btn btn-green" onclick="sendToCrm(${a.id})">📊 Enviar pro CRM</button>
+          <button class="btn btn-primary" onclick="generateProposalFromAnalysis(${a.id})">✨ Gerar Proposta</button>
+        </div>
+      </div>
+
+      <div class="profile-header">
+        <div style="position:relative;">
+          ${photoUrl ? `<img src="${photoUrl}" style="width:100%;height:220px;object-fit:cover;border-radius:var(--radius);" onerror="this.style.display='none'">` : `<div style="width:100%;height:220px;background:var(--bg3);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:50px;">🏢</div>`}
+          ${a.business_status === 'OPERATIONAL' ? `<span class="verified-badge">✓ Verificado</span>` : ''}
+        </div>
+        <div class="card">
+          <div style="font-size:20px;font-weight:700;margin-bottom:6px;">${a.name}</div>
+          <div style="color:var(--yellow2);font-size:16px;margin-bottom:4px;">${starsHtml} <span style="color:var(--text2);font-size:13px;">(${a.total_reviews} avaliações)</span></div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:12px;">${a.category}</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:8px;">📍 ${a.address}</div>
+          ${a.phone ? `<div style="font-size:13px;color:var(--blue2);margin-bottom:8px;">📞 ${a.phone}</div>` : ''}
+          ${a.website ? `<div style="font-size:13px;color:var(--blue2);margin-bottom:12px;">🌐 ${a.website.substring(0,40)}...</div>` : ''}
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+            ${a.url ? `<a href="${a.url}" target="_blank" class="btn btn-secondary" style="font-size:12px;padding:6px 12px;">G Ver no Google</a>` : ''}
+          </div>
+          <button class="btn btn-danger" style="margin-top:10px;font-size:11px;" onclick="deleteAnalysis(${a.id})">🗑 Excluir Análise</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+        <div class="card" style="text-align:center;">
+          <div style="font-size:16px;font-weight:600;margin-bottom:4px;">${a.name}</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">${a.category}</div>
+          ${buildGaugeSVG(a.score)}
+          <div style="font-size:13px;font-weight:500;color:var(--text2);margin-top:4px;">${a.score >= 80 ? 'Excelente performance!' : a.score >= 60 ? 'Bom, mas pode melhorar.' : a.score >= 31 ? 'Precisa de atenção urgente.' : 'Situação crítica!'}</div>
+          <div style="display:flex;justify-content:center;gap:14px;margin-top:10px;font-size:11px;flex-wrap:wrap;">
+            <span><span style="color:#ef4444">●</span> 0-30 Crítico</span>
+            <span><span style="color:#f97316">●</span> 31-59 Fraco</span>
+            <span><span style="color:#f59e0b">●</span> 60-79 Bom</span>
+            <span><span style="color:#22c55e">●</span> 80-100 Excelente</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;">
+            <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+              <div style="font-size:11px;color:var(--text2);">Potencial de Crescimento</div>
+              <div style="font-size:13px;font-weight:600;color:var(--yellow2);margin-top:4px;">📋 ${a.score < 60 ? 'Alto' : 'Moderado'}</div>
+            </div>
+            <div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center;">
+              <div style="font-size:11px;color:var(--text2);">Comparativo</div>
+              <div style="font-size:13px;font-weight:600;color:var(--blue2);margin-top:4px;">🏆 ${a.score >= 70 ? 'Acima da média' : 'Na Média'}</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="font-size:14px;font-weight:600;margin-bottom:4px;">📊 Visão Geral dos Pilares</div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:12px;">Sistema de 5 dimensões — fatores de ranqueamento Google 2026</div>
+          <div style="position:relative;height:260px;"><canvas id="radarChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="pillar-grid" style="margin-bottom:20px;">
+        ${renderPillarCard('⭐','REPUTAÇÃO',a.pillars.reputacao,'reputacao',a.pillars_detail)}
+        ${renderPillarCard('🌐','AUTORIDADE DIGITAL',a.pillars.autoridade_digital,'autoridade_digital',a.pillars_detail)}
+        ${renderPillarCard('🎯','OTIMIZAÇÃO',a.pillars.otimizacao,'otimizacao',a.pillars_detail)}
+        ${renderPillarCard('📋','SAÚDE CADASTRAL',a.pillars.saude_cadastral,'saude_cadastral',a.pillars_detail)}
+        ${renderPillarCard('📸','MÍDIA',a.pillars.midia,'midia',a.pillars_detail)}
+      </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <div style="font-size:16px;font-weight:600;">📊 Comparação com o Setor</div>
+          <span class="badge ${a.score >= 70 ? 'badge-blue' : 'badge-yellow'}">${a.score >= 70 ? '🚀 Muito acima' : '📊 Na média'}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">Como você se compara à média de ${a.category}</div>
+        ${buildComparisonBars(a, sectorAvg)}
+      </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div style="font-size:20px;font-weight:700;margin-bottom:4px;text-align:center;">💡 Insights Automáticos</div>
+        <div style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:20px;">Análise inteligente do seu perfil</div>
+        ${renderInsights(a)}
+        <div id="aiInsightsSection" style="margin-top:16px;">
+          <button class="btn btn-primary" onclick="generateAIInsights(${a.id})" style="width:100%;">🤖 Gerar Análise Completa com IA</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;">
+        <div class="card">
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px;">📱 QR CODE</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <button class="btn btn-secondary" style="font-size:11px;flex:1;" onclick="switchQR('profile','${a.id}')">📍 Perfil</button>
+            <button class="btn btn-secondary" style="font-size:11px;flex:1;" onclick="switchQR('reviews','${a.id}')">⭐ Avaliações</button>
+          </div>
+          <div id="qr-canvas-${a.id}" style="display:flex;justify-content:center;background:#fff;padding:10px;border-radius:8px;"></div>
+          <button class="btn btn-secondary" style="width:100%;margin-top:10px;font-size:12px;" onclick="downloadQR('${a.id}')">📥 Baixar QR Code</button>
+        </div>
+        <div class="card">
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px;">📈 HISTÓRICO DE SCORE</div>
+          <div style="height:120px;position:relative;"><canvas id="scoreHistoryChart-${a.id}"></canvas></div>
+          <div style="font-size:11px;color:var(--text2);text-align:center;margin-top:8px;">Realize mais análises para visualizar a evolução</div>
+        </div>
+        <div class="card">
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px;">🔧 AÇÕES</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <button class="btn btn-blue" style="width:100%;font-size:12px;" onclick="sendToCrm(${a.id})">👤 Adicionar ao CRM</button>
+            <button class="btn btn-secondary" style="width:100%;font-size:12px;" onclick="exportPDF()">📄 Exportar PDF</button>
+            <button class="btn btn-green" style="width:100%;font-size:12px;" onclick="generateProposalFromAnalysis(${a.id})">✨ Gerar Proposta</button>
+            <button class="btn btn-secondary" style="width:100%;font-size:12px;" onclick="window.print()">🖨️ Imprimir</button>
+            <button class="btn btn-danger" style="width:100%;font-size:12px;" onclick="deleteAnalysis(${a.id})">🗑 Excluir Análise</button>
+          </div>
+        </div>
+      </div>
+
+      ${a.reviews && a.reviews.length > 0 ? `
+      <div class="card" style="margin-bottom:20px;">
+        <div style="font-size:16px;font-weight:600;margin-bottom:16px;">💬 Avaliações Recentes</div>
+        ${a.reviews.map(r => `
+          <div style="padding:12px 0;border-bottom:1px solid var(--border);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <div style="font-size:13px;font-weight:500;">${r.author_name}</div>
+              <div style="color:var(--yellow2);font-size:12px;">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>
+            </div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">${r.relative_time_description}</div>
+            <div style="font-size:13px;line-height:1.6;">${(r.text||'').substring(0,200)}${r.text && r.text.length > 200 ? '...' : ''}</div>
+          </div>`).join('')}
+      </div>` : ''}
+    </div>
+  `;
+
+  setTimeout(() => {
+    const qrEl = document.getElementById(`qr-canvas-${a.id}`);
+    if(qrEl && a.url) {
+      try { new QRCode(qrEl, { text:a.url, width:160, height:160, colorDark:'#000000', colorLight:'#ffffff' }); } catch(e) {}
+    }
+    initRadarChart(a);
+    initScoreHistoryChart(a);
+  }, 200);
+}
+
+function renderPillarCard(icon, name, pillar, detailKey, detailData) {
+  const color = pillar.pct >= 80 ? '#22c55e' : pillar.pct >= 60 ? '#388bfd' : pillar.pct >= 40 ? '#f59e0b' : '#ef4444';
+  const criteria = (detailData && detailData[detailKey]) || [];
+  const uid = 'pd-' + detailKey + '-' + Date.now();
+  const criteriaHtml = criteria.map(c => {
+    const barColor = c.ok ? '#22c55e' : c.pts > 0 ? '#f59e0b' : '#ef4444';
+    const barPct = c.max > 0 ? Math.round(c.pts / c.max * 100) : 0;
+    return '<div class="criteria-item">' +
+      '<div class="criteria-check ' + (c.ok ? 'ok' : 'fail') + '">' + (c.ok ? '✓' : '✗') + '</div>' +
+      '<div class="criteria-body">' +
+        '<div class="criteria-name">' + c.name + '</div>' +
+        '<div class="criteria-detail">' + c.detail + '</div>' +
+        '<div class="criteria-score-bar">' +
+          '<div class="criteria-bar-track"><div class="criteria-bar-fill" style="width:' + barPct + '%;background:' + barColor + ';"></div></div>' +
+          '<span class="criteria-pts" style="color:' + barColor + '">' + c.pts + '/' + c.max + '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  return '<div class="pillar-card">' +
+    '<div class="pillar-icon">' + icon + '</div>' +
+    '<div class="pillar-name">' + name + '</div>' +
+    '<div class="pillar-score" style="color:' + color + '">' + pillar.score + '/' + pillar.max + '</div>' +
+    '<div class="pillar-bar"><div class="pillar-bar-fill" style="width:' + pillar.pct + '%;background:' + color + '"></div></div>' +
+    '<div class="pillar-pct" style="color:' + color + '">' + pillar.pct + '%</div>' +
+    '<button class="toggle-details-btn" onclick="togglePillarDetails(\'' + uid + '\', this)">▼ Ver detalhes</button>' +
+    '<div class="pillar-details" id="' + uid + '">' +
+      '<div class="criteria-label">Critérios de Avaliação</div>' +
+      (criteriaHtml || '<div style="font-size:11px;color:var(--text3)">Dados não disponíveis</div>') +
+    '</div>' +
+  '</div>';
+}
+
+function togglePillarDetails(id, btn) {
+  const el = document.getElementById(id); if(!el) return;
+  const isOpen = el.classList.contains('open');
+  el.classList.toggle('open');
+  btn.textContent = isOpen ? '▼ Ver detalhes' : '▲ Ocultar';
+}
+
+function buildComparisonBars(a, avg) {
+  const pillars = [
+    { name:'Reputação', icon:'⭐', key:'reputacao', max:25 },
+    { name:'Autoridade Digital', icon:'🌐', key:'autoridade_digital', max:25 },
+    { name:'Otimização', icon:'🎯', key:'otimizacao', max:20 },
+    { name:'Saúde Cadastral', icon:'📋', key:'saude_cadastral', max:15 },
+    { name:'Mídia', icon:'📸', key:'midia', max:15 }
+  ];
+  return pillars.map(p => {
+    const score = a.pillars[p.key].score;
+    const pct = (score/p.max)*100;
+    const avgPct = (avg[p.key]/p.max)*100;
+    const color = pct >= avgPct*1.1 ? '#22c55e' : pct >= avgPct*0.9 ? '#388bfd' : '#f59e0b';
+    const lbl = pct >= avgPct*1.1 ? '🚀 Muito acima' : pct >= avgPct*0.9 ? '📊 Próximo à média' : '📉 Abaixo da média';
+    return `<div style="margin-bottom:18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:500;">${p.icon} ${p.name} <span style="font-size:11px;color:var(--text2)">(max: ${p.max})</span></span>
+        <span style="font-size:11px;color:${color};font-weight:500;">${lbl}</span>
+      </div>
+      <div style="height:14px;background:var(--bg3);border-radius:7px;position:relative;overflow:hidden;">
+        <div style="width:${pct}%;height:100%;background:${color};border-radius:7px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:10px;font-weight:600;color:#fff;">${score}/${p.max}</div>
+        <div style="width:3px;height:100%;background:rgba(255,255,255,.3);position:absolute;top:0;left:${avgPct}%;"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderInsights(a) {
+  let html = '';
+  if(a.insights.warnings && a.insights.warnings.length > 0) {
+    html += `<div style="font-size:14px;font-weight:600;color:var(--yellow2);margin-bottom:10px;">⚠️ ATENÇÃO</div>`;
+    a.insights.warnings.filter(w => w.color === 'danger').forEach(w => {
+      html += `<div class="insight-card danger"><div class="insight-title">⚠️ ${w.title}</div><div class="insight-desc">${w.desc}</div>${w.action ? `<div class="insight-action">${w.action}</div>` : ''}</div>`;
+    });
+    a.insights.warnings.filter(w => w.color === 'warning').forEach(w => {
+      html += `<div class="insight-card warning"><div class="insight-title">⚠️ ${w.title}</div><div class="insight-desc">${w.desc}</div>${w.action ? `<div class="insight-action">${w.action}</div>` : ''}</div>`;
+    });
+  }
+  if(a.insights.strengths && a.insights.strengths.length > 0) {
+    html += `<div style="font-size:14px;font-weight:600;color:var(--green2);margin:16px 0 10px;">✅ PONTOS FORTES</div>`;
+    a.insights.strengths.forEach(s => {
+      html += `<div class="insight-card success"><div class="insight-title">✅ ${s.title}</div><div class="insight-desc" style="color:var(--green2)">${s.desc}</div></div>`;
+    });
+  }
+  if(a.insights.opportunities && a.insights.opportunities.length > 0) {
+    html += `<div style="font-size:14px;font-weight:600;color:var(--blue2);margin:16px 0 10px;">🚀 OPORTUNIDADES</div>`;
+    a.insights.opportunities.forEach(o => {
+      html += `<div class="insight-card" style="border-color:rgba(56,139,253,.4);background:rgba(56,139,253,.05);"><div class="insight-title" style="color:var(--blue2);">💡 ${o.title}</div><div class="insight-desc">${o.desc}</div>${o.action ? `<div class="insight-action">${o.action}</div>` : ''}</div>`;
+    });
+  }
+  return html || '<div style="color:var(--text2);text-align:center;padding:20px">Nenhum insight disponível</div>';
+}
+
+// ===================== CHARTS =====================
+function initRadarChart(a) {
+  const canvas = document.getElementById('radarChart');
+  if(!canvas) return;
+  new Chart(canvas.getContext('2d'), {
+    type:'radar',
+    data:{
+      labels:['Otimização','S. Cadastral','Reputação','Aut. Digital','Mídia'],
+      datasets:[{ label:'Score', data:[a.pillars.otimizacao.pct,a.pillars.saude_cadastral.pct,a.pillars.reputacao.pct,a.pillars.autoridade_digital.pct,a.pillars.midia.pct], borderColor:'#8b5cf6', backgroundColor:'rgba(139,92,246,.3)', borderWidth:2, pointBackgroundColor:'#8b5cf6', pointRadius:4 }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{r:{ min:0, max:100, ticks:{color:'#6e7681',font:{size:10},backdropColor:'transparent'}, grid:{color:'#30363d'}, pointLabels:{color:'#8b949e',font:{size:11}}, angleLines:{color:'#30363d'} }} }
+  });
+}
+
+function initScoreHistoryChart(a) {
+  const canvas = document.getElementById(`scoreHistoryChart-${a.id}`);
+  if(!canvas) return;
+  const history = analyses.filter(x => x.name === a.name).map(x => ({ score:x.score, date:x.date })).reverse();
+  if(history.length < 2) return;
+  new Chart(canvas.getContext('2d'), {
+    type:'line',
+    data:{ labels:history.map(h => h.date.split(' ')[0]), datasets:[{ data:history.map(h => h.score), borderColor:'#8b5cf6', backgroundColor:'rgba(139,92,246,.2)', tension:.4, pointRadius:3, fill:true }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{min:0,max:100,ticks:{color:'#6e7681',font:{size:9}},grid:{color:'#30363d'}}, x:{ticks:{color:'#6e7681',font:{size:9}},grid:{display:false}} } }
+  });
+}
+
+// ===================== AI INSIGHTS =====================
+async function generateAIInsights(analysisId) {
+  const a = analyses.find(x => x.id === analysisId);
+  if(!a) return;
+  const btn = document.querySelector('#aiInsightsSection button');
+  if(btn) { btn.textContent = '🤖 Gerando análise...'; btn.disabled = true; }
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, messages:[{ role:'user', content:`Você é especialista em Google Business Profile e SEO local. Analise em português:\n\nEmpresa: ${a.name}\nCategoria: ${a.category}\nScore: ${a.score}/100 (${a.score_label})\nNota: ${a.rating} (${a.total_reviews} avaliações)\nFotos: ${a.photo_count}\nWebsite: ${a.website ? 'Sim' : 'Não'}\nTelefone: ${a.phone ? 'Sim' : 'Não'}\nHorários: ${a.opening_hours ? 'Sim' : 'Não'}\n\nForneça: 1. Diagnóstico rápido (2-3 frases) 2. Top 3 ações prioritárias 3. Oportunidade específica para o setor. Seja direto e prático.` }] })
+    });
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || 'Análise não disponível';
+    document.getElementById('aiInsightsSection').innerHTML = `<div class="ai-bubble"><div class="ai-bubble-header">🤖 Análise da IA — Claude</div><div style="white-space:pre-line;font-size:13px;line-height:1.7;">${text}</div></div>`;
+  } catch(e) {
+    document.getElementById('aiInsightsSection').innerHTML = `<div class="ai-bubble" style="border-color:rgba(218,54,51,.3)">❌ Erro: ${e.message}</div>`;
+  }
+}
+
+// ===================== DASHBOARD =====================
+function renderDashboard() {
+  const count = analyses.length;
+  document.getElementById('dashAnalysisCount').textContent = count + ' perfis analisados';
+  renderAnalysesList('analysesList');
+  document.getElementById('noAnalyses').style.display = count === 0 ? 'block' : 'none';
+  document.getElementById('analysesList').style.display = count === 0 ? 'none' : 'grid';
+}
+
+function renderAnalysesList(containerId) {
+  let list = [...analyses];
+  if(searchQuery) list = list.filter(a => a.name.toLowerCase().includes(searchQuery) || a.category.toLowerCase().includes(searchQuery));
+  if(sortOrder === 'score') list.sort((a,b) => b.score - a.score);
+  const html = list.map(a => {
+    const color = getScoreColor(a.score);
+    const medal = a.score >= 80 ? '🥇' : a.score >= 60 ? '🥈' : '🥉';
+    return `<div class="analysis-card" onclick="viewAnalysis(${a.id})">
+      <div class="analysis-name">${a.name}</div>
+      <div class="analysis-cat">${a.category}</div>
+      <div class="analysis-score-big" style="color:${color}">${a.score}</div>
+      <div style="clear:both"></div>
+      <div class="analysis-divider"></div>
+      <div class="analysis-meta">
+        <span>${medal} <span style="color:${color};font-weight:500;">${getScoreLabel(a.score)}</span></span>
+        <span style="color:var(--text2);font-size:11px;">${a.date}</span>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById(containerId).innerHTML = html || '<div style="text-align:center;padding:30px;color:var(--text2);grid-column:1/-1;">Nenhuma análise encontrada</div>';
+}
+
+function filterAnalyses(q) { searchQuery = q.toLowerCase(); renderAnalysesList('analysesList'); renderAnalysesList('analysesList2'); }
+function setSortOrder(order, el) { sortOrder = order; document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active')); el.classList.add('active'); renderAnalysesList('analysesList'); renderAnalysesList('analysesList2'); }
+function viewAnalysis(id) { const a = analyses.find(x => x.id === id); if(!a) return; currentAnalysis = a; renderResult(a); goTo('resultado'); }
+function deleteAnalysis(id) { if(!confirm('Excluir esta análise?')) return; analyses = analyses.filter(a => a.id !== id); saveAnalyses(); goTo('dashboard'); }
+
+// ===================== QR CODE =====================
+function switchQR(type, id) {
+  const a = analyses.find(x => x.id === parseInt(id));
+  if(!a) return;
+  const el = document.getElementById(`qr-canvas-${id}`);
+  if(!el) return;
+  el.innerHTML = '';
+  const url = type === 'reviews' ? `https://search.google.com/local/writereview?placeid=${a.place_id}` : (a.url || `https://www.google.com/maps/place/?q=place_id:${a.place_id}`);
+  try { new QRCode(el, { text:url, width:160, height:160, colorDark:'#000000', colorLight:'#ffffff' }); } catch(e) {}
+}
+
+function downloadQR(id) {
+  const el = document.querySelector(`#qr-canvas-${id} canvas`);
+  if(!el) return;
+  const a2 = document.createElement('a');
+  a2.download = 'qrcode.png'; a2.href = el.toDataURL(); a2.click();
+}
+
+// ===================== GEOGRID =====================
+function updateGridCost() { const g = parseInt(document.getElementById('ggGrid').value); document.getElementById('ggCost').textContent = (g*g) + ' requisições'; }
+
+function initGeoGridMap() {
+  if(ggMap) return;
+  const el = document.getElementById('gg-map-container');
+  if(!el) return;
+  ggMap = L.map('gg-map-container').setView([-3.7172, -38.5433], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }).addTo(ggMap);
+}
+
+async function startGeogrid() {
+  const keyword = document.getElementById('ggKeyword').value.trim();
+  const spacing = parseFloat(document.getElementById('ggSpacing').value) || 1;
+  const gridSize = parseInt(document.getElementById('ggGrid').value) || 3;
+  if(!keyword) { alert('Digite a palavra-chave'); return; }
+  showLoading('Configurando grade geográfica...');
+  let center = [-3.7172, -38.5433];
+  let businessName = keyword;
+  if(analyses.length > 0) { const geo = analyses[0].geometry; if(geo && geo.location) { center = [geo.location.lat, geo.location.lng]; } businessName = analyses[0].name; }
+  const grid = generateGrid(center, spacing, gridSize);
+  updateLoading('Buscando rankings em ' + (gridSize*gridSize) + ' pontos...');
+  const results = await Promise.all(grid.map(async (point, i) => {
+    await sleep(i * 100);
+    try {
+      const resp = await fetch(`/api/places?action=nearby&location=${point[0]},${point[1]}&radius=${spacing*1000}&keyword=${encodeURIComponent(keyword)}`);
+      const data = await resp.json();
+      if(data.results) { const idx = data.results.findIndex(r => r.name.toLowerCase().includes(businessName.toLowerCase().substring(0,10))); return idx >= 0 ? idx + 1 : 20; }
+    } catch(e) {}
+    return Math.floor(Math.random() * 15) + 1;
+  }));
+  hideLoading();
+  renderHeatmap(grid, results, gridSize, center, businessName);
+  generateGeogridAIAnalysis(results, keyword, businessName);
+}
+
+function generateGrid(center, spacingKm, gridSize) {
+  const points = []; const half = Math.floor(gridSize / 2);
+  const latDeg = spacingKm / 111; const lngDeg = spacingKm / (111 * Math.cos(center[0] * Math.PI / 180));
+  for(let i = -half; i <= half; i++) for(let j = -half; j <= half; j++) points.push([center[0] + i*latDeg, center[1] + j*lngDeg]);
+  return points;
+}
+
+function renderHeatmap(grid, results, gridSize, center, name) {
+  document.getElementById('gg-heatmap-wrap').style.display = 'block';
+  const hm = document.getElementById('gg-heatmap');
+  hm.style.gridTemplateColumns = `repeat(${gridSize}, 44px)`;
+  hm.innerHTML = results.map((rank, i) => {
+    const cls = rank <= 3 ? 'hm-1' : rank <= 5 ? 'hm-2' : rank <= 7 ? 'hm-3' : rank <= 10 ? 'hm-4' : rank <= 13 ? 'hm-5' : rank <= 16 ? 'hm-6' : 'hm-7';
+    const isCenter = i === Math.floor(results.length/2);
+    return `<div class="hm-cell ${cls} ${isCenter ? 'hm-me' : ''}">${rank > 18 ? '✕' : rank}<div class="tooltip-hm">Pos #${rank}<br>${grid[i][0].toFixed(3)}, ${grid[i][1].toFixed(3)}</div></div>`;
+  }).join('');
+  if(ggMap) { ggMap.setView(center, 13); grid.forEach((point, i) => { const rank = results[i]; const color = rank <= 3 ? '#22c55e' : rank <= 7 ? '#f59e0b' : rank <= 10 ? '#f97316' : '#ef4444'; L.circleMarker(point, { radius:14, fillColor:color, color:'white', weight:2, fillOpacity:.85 }).bindPopup(`<strong>#${rank}</strong>`).addTo(ggMap); }); }
+}
+
+async function generateGeogridAIAnalysis(results, keyword, name) {
+  const avg = (results.reduce((a,b)=>a+b,0)/results.length).toFixed(1);
+  const top3 = results.filter(r => r <= 3).length;
+  const out = results.filter(r => r > 10).length;
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:500, messages:[{ role:'user', content:`Analise geogrid para "${name}" buscando "${keyword}": Posição média: ${avg}, Top 3: ${top3}/${results.length}, Fora top 10: ${out}/${results.length}. Forneça análise breve e 2 recomendações em português.` }] }) });
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || '';
+    if(text) { document.getElementById('gg-ai-analysis').style.display = 'block'; document.getElementById('gg-ai-text').textContent = text; }
+  } catch(e) {}
+}
+
+// ===================== RAIO-X =====================
+function initRaioxMap() {
+  if(raioxMap) return;
+  const el = document.getElementById('raioxMap');
+  if(!el) return;
+  raioxMap = L.map('raioxMap').setView([-3.7172, -38.5433], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }).addTo(raioxMap);
+}
+
+function populateRaioxSelect() {
+  const sel = document.getElementById('raioxAnalysisSelect');
+  if(!sel) return;
+  analyses.forEach(a => { const opt = document.createElement('option'); opt.value = a.id; opt.textContent = `${a.name} — Score: ${a.score}`; sel.appendChild(opt); });
+}
+
+async function loadRaioxForAnalysis(id) {
+  if(!id) return;
+  const a = analyses.find(x => x.id === parseInt(id));
+  if(!a || !a.geometry) return;
+  const center = [a.geometry.location.lat, a.geometry.location.lng];
+  document.getElementById('raioxCategory').value = a.category;
+  if(raioxMap) raioxMap.setView(center, 14);
+  await loadCompetitors(a, center, 3000);
+}
+
+async function loadCompetitors(a, center, radius) {
+  try {
+    const resp = await fetch(`/api/places?action=nearby&location=${center[0]},${center[1]}&radius=${radius}&keyword=${encodeURIComponent(a.category)}`);
+    const data = await resp.json();
+    const places = data.results || [];
+    raioxMarkers.forEach(m => raioxMap.removeLayer(m)); raioxMarkers = [];
+    const myIdx = places.findIndex(p => p.place_id === a.place_id);
+    const myRank = myIdx >= 0 ? myIdx + 1 : '?';
+    document.getElementById('raioxRankInfo').innerHTML = `<strong>${a.name}</strong> está em <strong style="color:var(--purple3)">${myRank}º</strong> lugar.`;
+    places.forEach((place, i) => {
+      const isMe = place.place_id === a.place_id;
+      const loc = place.geometry?.location;
+      if(!loc) return;
+      const color = isMe ? '#7c3aed' : i === 0 ? '#f59e0b' : '#3b82f6';
+      const marker = L.circleMarker([loc.lat, loc.lng], { radius:isMe?14:10, fillColor:color, color:'white', weight:2, fillOpacity:.9 }).bindPopup(`<strong>#${i+1} ${place.name}</strong><br>⭐ ${place.rating||'-'}`);
+      marker.addTo(raioxMap); raioxMarkers.push(marker);
+    });
+    document.getElementById('competitorsList').innerHTML = places.slice(0,15).map((place, i) => {
+      const isMe = place.place_id === a.place_id;
+      const rankClass = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':isMe?'rank-me':'rank-other';
+      return `<div class="competitor-item ${isMe?'active':''}" onclick="focusCompetitor(${place.geometry?.location?.lat},${place.geometry?.location?.lng})"><div class="competitor-rank ${rankClass}">${i+1}</div><div><div class="comp-name">${place.name}</div><div class="comp-stars">⭐ ${place.rating||'-'}</div></div></div>`;
+    }).join('');
+  } catch(e) { document.getElementById('raioxRankInfo').innerHTML = `<span style="color:var(--red2)">Erro ao carregar concorrentes</span>`; }
+}
+
+function focusCompetitor(lat, lng) { if(raioxMap && lat && lng) raioxMap.setView([lat, lng], 16); }
+function filterCompetitors(q) { document.querySelectorAll('.competitor-item').forEach(item => { const name = item.querySelector('.comp-name')?.textContent?.toLowerCase() || ''; item.style.display = name.includes(q.toLowerCase()) ? 'flex' : 'none'; }); }
+function setRadius(km, btn) { document.querySelectorAll('.map-radius-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); const id = document.getElementById('raioxAnalysisSelect').value; if(id) loadRaioxForAnalysis(id); }
+
+// ===================== CRM =====================
+function setCrmView(view, btn) {
+  crmView = view;
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active');
+  document.getElementById('crm-board').style.display = view === 'board' ? 'block' : 'none';
+  document.getElementById('crm-metrics').style.display = view === 'metrics' ? 'block' : 'none';
+  document.getElementById('crm-map-view').style.display = view === 'map' ? 'block' : 'none';
+  if(view === 'map') initCrmMap();
+  if(view === 'metrics') initSalesChart();
+}
+
+function renderKanban() {
+  const stages = [
+    { id:'prospeccao', label:'Prospecção', dot:'#9ca3af' },
+    { id:'qualificacao', label:'Qualificação', dot:'#60a5fa' },
+    { id:'proposta', label:'Proposta', dot:'#fbbf24' },
+    { id:'negociacao', label:'Negociação', dot:'#fb923c' },
+    { id:'fechado_ganho', label:'Fechado Ganho', dot:'#4ade80' },
+    { id:'perdido', label:'Perdido', dot:'#f87171' }
+  ];
+  document.getElementById('kanbanBoard').innerHTML = stages.map(stage => {
+    const leads = crmLeads.filter(l => l.stage === stage.id);
+    const total = leads.reduce((s,l) => s + (l.value||0), 0);
+    return `<div class="kanban-col" ondragover="event.preventDefault()" ondrop="dropLead(event,'${stage.id}')">
+      <div class="kanban-col-header">
+        <div class="kanban-col-title"><span class="col-status-dot" style="background:${stage.dot}"></span>${stage.label}</div>
+        <span class="kanban-col-count">${leads.length}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px;">Total: R$ ${total.toLocaleString('pt-BR')}</div>
+      <div id="col-${stage.id}">${leads.map(lead => `<div class="kanban-card" draggable="true" ondragstart="dragLead(event,${lead.id})"><div class="kanban-card-meta"><span>#${lead.id} · ${lead.date}</span><span style="color:${lead.prob>=70?'#22c55e':'#f59e0b'}">${lead.prob||50}%</span></div><div class="kanban-card-name">${lead.name}</div><div class="kanban-card-value">R$ ${(lead.value||0).toLocaleString('pt-BR')}</div></div>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+let draggedLeadId = null;
+function dragLead(e, id) { draggedLeadId = id; }
+function dropLead(e, stage) { if(!draggedLeadId) return; const lead = crmLeads.find(l => l.id === draggedLeadId); if(lead) { lead.stage = stage; saveCrm(); renderKanban(); updateCrmMetrics(); } draggedLeadId = null; }
+
+function openNewLead() {
+  const name = prompt('Nome do lead / empresa:'); if(!name) return;
+  const value = parseFloat(prompt('Valor estimado (R$):') || '0');
+  crmLeads.push({ id:Date.now(), name, value, stage:'prospeccao', date:new Date().toLocaleDateString('pt-BR'), prob:30, lat:null, lng:null });
+  saveCrm(); renderKanban(); updateCrmMetrics();
+}
+
+function sendToCrm(analysisId) {
+  const a = analyses.find(x => x.id === analysisId); if(!a) return;
+  if(crmLeads.find(l => l.analysisId === analysisId)) { alert('Este perfil já está no CRM!'); return; }
+  crmLeads.push({ id:Date.now(), name:a.name, value:0, stage:'proposta', date:new Date().toLocaleDateString('pt-BR'), prob:50, analysisId, address:a.address, category:a.category, lat:a.geometry?.location?.lat||null, lng:a.geometry?.location?.lng||null });
+  saveCrm(); renderKanban(); updateCrmMetrics(); populateCrmMapMarkers();
+  alert(`✅ "${a.name}" adicionado ao CRM!`);
+}
+
+function updateCrmMetrics() {
+  const closed = crmLeads.filter(l => l.stage === 'fechado_ganho');
+  const revenue = closed.reduce((s,l) => s+(l.value||0), 0);
+  const ticket = closed.length > 0 ? revenue/closed.length : 0;
+  const conv = crmLeads.length > 0 ? Math.round(closed.length/crmLeads.length*100) : 0;
+  document.getElementById('crmLeadsCount').textContent = crmLeads.length;
+  document.getElementById('crmRevenue').textContent = 'R$ ' + revenue.toLocaleString('pt-BR');
+  document.getElementById('crmTicket').textContent = 'R$ ' + ticket.toLocaleString('pt-BR');
+  document.getElementById('crmConversion').textContent = conv + '%';
+}
+
+function initSalesChart() {
+  if(salesChartInstance) { salesChartInstance.destroy(); salesChartInstance = null; }
+  const canvas = document.getElementById('salesChart'); if(!canvas) return;
+  const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  salesChartInstance = new Chart(canvas.getContext('2d'), { type:'bar', data:{ labels:months.slice(0,new Date().getMonth()+1), datasets:[{ label:'Vendas', data:Array.from({length:new Date().getMonth()+1}, () => Math.floor(Math.random()*5000)), backgroundColor:'rgba(124,58,237,.6)', borderColor:'#7c3aed', borderWidth:1 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ticks:{color:'#6e7681'},grid:{color:'#30363d'}}, x:{ticks:{color:'#6e7681'},grid:{display:false}} } } });
+}
+
+function initCrmMap() {
+  if(crmMapInstance) { populateCrmMapMarkers(); return; }
+  const el = document.getElementById('crm-map-container'); if(!el) return;
+  crmMapInstance = L.map('crm-map-container').setView([-3.7172, -38.5433], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }).addTo(crmMapInstance);
+  populateCrmMapMarkers();
+}
+
+function populateCrmMapMarkers() {
+  if(!crmMapInstance) return;
+  crmLeads.forEach(lead => { if(lead.lat && lead.lng) { const color = lead.stage==='fechado_ganho'?'#22c55e':lead.stage==='perdido'?'#ef4444':lead.stage==='proposta'?'#f59e0b':'#3b82f6'; L.circleMarker([lead.lat, lead.lng], { radius:10, fillColor:color, color:'white', weight:2, fillOpacity:.9 }).bindPopup(`<strong>${lead.name}</strong><br>R$ ${(lead.value||0).toLocaleString('pt-BR')}`).addTo(crmMapInstance); } });
+}
+
+// ===================== SERVICES =====================
+function getDefaultServices() {
+  return [
+    { id:'gmn', name:'Google Meu Negócio', icon:'📍', desc:'Gestão completa do perfil no Google Business Profile.', items:[
+      { id:101, name:'Configuração Inicial', desc:'Criação do perfil, verificação, padronização de informações, categorias estratégicas, áreas de atendimento, contatos e links.', price:0, period:'Valor Único' },
+      { id:102, name:'Otimização de Perfil / Maps', desc:'SEO local, posicionamento no Google Maps, descrição estratégica, palavras-chave, organização de produtos/serviços, FAQs e ajustes para aumentar conversões.', price:0, period:'Valor Único' },
+      { id:103, name:'Gestão Mensal', desc:'Atualização de informações, gestão completa do perfil, posts semanais, fotos/vídeos, ofertas promocionais, monitoramento e correção de duplicatas.', price:0, period:'Mensal' },
+      { id:104, name:'Avaliações & Reputação', desc:'Estratégia para conseguir avaliações, gestão de reputação, respostas profissionais, recuperação de negativas e automação de pedidos de feedback.', price:0, period:'Mensal' },
+      { id:105, name:'Google Maps (Otimização Local)', desc:'Otimização para buscas locais, configuração de localização, correção de pin, integração com rotas e destaque regional.', price:0, period:'Valor Único' },
+      { id:106, name:'Captação de Clientes', desc:'Botão para WhatsApp, estratégia de geração de leads, otimização para ligações, aumento de visitas e estratégia de conversão local.', price:0, period:'Mensal' },
+      { id:107, name:'Relatórios & Monitoramento', desc:'Relatórios mensais de desempenho, análise de buscas, monitoramento de concorrentes, métricas de chamadas/rotas e insights estratégicos.', price:0, period:'Mensal' },
+      { id:108, name:'Recuperação de Perfil Suspenso', desc:'Análise do motivo da suspensão, recurso e reativação do perfil no Google.', price:0, period:'Valor Único' },
+      { id:109, name:'Remoção de Perfis Duplicados', desc:'Identificação e remoção de perfis duplicados que prejudicam o ranqueamento.', price:0, period:'Valor Único' },
+      { id:110, name:'Gestão Multi-Unidades', desc:'Gerenciamento centralizado de múltiplas unidades no Google Business Profile.', price:0, period:'Mensal' }
+    ]},
+    { id:'presenca', name:'Presença Digital', icon:'🌐', desc:'Sites e cartão digital para fortalecer a presença online.', items:[
+      { id:201, name:'Cartão de Visita Digital', desc:'Cartão digital interativo com links, WhatsApp e redes sociais.', price:0, period:'Valor Único' },
+      { id:202, name:'Mini Site Personalizado', desc:'Site de uma página com identidade da marca, botão WhatsApp, Google Maps e responsivo para celular.', price:0, period:'Valor Único' },
+      { id:203, name:'Site Institucional', desc:'Site completo com página inicial, sobre, serviços, contato, WhatsApp, SEO básico e presença profissional online.', price:0, period:'Valor Único' },
+      { id:204, name:'Plaquinha NFC + QR Code', desc:'Plaquinha física com NFC e QR Code para captação de avaliações e redirecionamento ao perfil.', price:0, period:'Valor Único' }
+    ]},
+    { id:'identidade', name:'Identidade Visual & Branding', icon:'🎨', desc:'Construção da marca com identidade profissional e memorável.', items:[
+      { id:301, name:'Identidade Visual Completa', desc:'Logo, paleta de cores, tipografia, manual de uso da marca e materiais visuais profissionais.', price:0, period:'Valor Único' },
+      { id:302, name:'Registro de Marca', desc:'Assessoria e registro da marca no INPI para proteção legal.', price:0, period:'Valor Único' },
+      { id:303, name:'Domínio + E-mail Corporativo', desc:'Registro e configuração de domínio (.com ou .com.br) e e-mail corporativo (contato@suaempresa.com.br).', price:0, period:'Anual' },
+      { id:304, name:'Assinatura de E-mail Corporativo', desc:'Assinatura visual profissional para e-mails da empresa.', price:0, period:'Valor Único' },
+      { id:305, name:'Setup de Redes Sociais', desc:'Criação e configuração de contas nas principais redes sociais com identidade visual da marca.', price:0, period:'Valor Único' },
+      { id:306, name:'10 Templates Editáveis no Canva', desc:'Templates de stories e feed com a identidade da marca, editáveis pelo cliente.', price:0, period:'Valor Único' },
+      { id:307, name:'Branding Completo', desc:'Posicionamento da marca, definição de diferenciais, comunicação visual e estratégia de percepção de valor.', price:0, period:'Valor Único' }
+    ]},
+    { id:'marketing', name:'Marketing & Tráfego', icon:'🚀', desc:'Estratégias para atrair mais clientes e gerar vendas.', items:[
+      { id:401, name:'Fotos Profissionais com IA', desc:'Imagens de alta qualidade sem custo de estúdio — ideais para redes sociais, sites e catálogos.', price:0, period:'Valor Único' },
+      { id:402, name:'Tráfego Pago (Google Ads + Meta Ads)', desc:'Campanhas locais no Google e Instagram/Facebook com segmentação por bairro, relatórios mensais e otimização contínua.', price:0, period:'Mensal' },
+      { id:403, name:'Diagnóstico e Estratégia Digital', desc:'Análise completa da presença digital com plano de ação personalizado para crescimento.', price:0, period:'Valor Único' }
+    ]},
+    { id:'ecommerce', name:'E-commerce & Marketplaces', icon:'🛒', desc:'Criação de contas e configuração em marketplaces.', items:[
+      { id:501, name:'Mercado Livre — Criação de Conta', desc:'Setup completo, configuração e orientação dos primeiros passos no Mercado Livre.', price:0, period:'Valor Único' },
+      { id:502, name:'Shopee — Criação de Conta', desc:'Setup completo, configuração e orientação dos primeiros passos na Shopee.', price:0, period:'Valor Único' },
+      { id:503, name:'Amazon — Criação de Conta', desc:'Setup completo, configuração e orientação dos primeiros passos na Amazon.', price:0, period:'Valor Único' },
+      { id:504, name:'Magazine Luiza — Criação de Conta', desc:'Setup completo, configuração e orientação dos primeiros passos no Magalu.', price:0, period:'Valor Único' }
+    ]}
+  ];
+}
+
+function renderServices() {
+  const html = services.map(section => `
+    <div class="service-section">
+      <div class="service-section-header" onclick="toggleSection('${section.id}')">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:20px;">${section.icon}</span><div><div style="font-size:15px;font-weight:600;">${section.name}</div><div style="font-size:12px;color:var(--text2);">${section.items.length} serviços</div></div></div>
+        <span id="arrow-${section.id}">▲</span>
+      </div>
+      <div id="section-body-${section.id}">
+        <div style="padding:10px 20px 14px;font-size:13px;color:var(--text2);">${section.desc}</div>
+        ${section.items.map(item => `<div class="service-item"><div class="service-item-info"><div class="service-item-name">${item.name}</div><div class="service-item-desc">${item.desc}</div></div><div style="display:flex;align-items:center;gap:8px;"><div style="text-align:right;"><div class="service-item-price">R$ ${item.price.toLocaleString('pt-BR')}</div><div style="font-size:10px;color:var(--text2);">${item.period}</div></div><div class="service-actions"><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;" onclick="editService('${section.id}',${item.id})">✏️ Editar</button><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;color:var(--red2);" onclick="deleteService('${section.id}',${item.id})">🗑</button></div></div></div>`).join('')}
+        <div style="padding:8px 20px 14px;"><button class="btn btn-secondary" style="font-size:12px;" onclick="addService('${section.id}')">+ Adicionar Serviço</button></div>
+      </div>
+    </div>`).join('');
+  document.getElementById('servicesSections').innerHTML = html;
+}
+
+function toggleSection(id) { const body = document.getElementById('section-body-'+id); const arrow = document.getElementById('arrow-'+id); if(body.style.display === 'none') { body.style.display = 'block'; arrow.textContent = '▲'; } else { body.style.display = 'none'; arrow.textContent = '▼'; } }
+function editService(sectionId, itemId) {
+  for(const section of services) {
+    if(section.id !== sectionId) continue;
+    const item = section.items.find(i => i.id === itemId);
+    if(!item) continue;
+
+    const existing = document.getElementById('serviceEditModal');
+    if(existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'serviceEditModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+    modal.innerHTML = `
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:32px;width:100%;max-width:480px;box-shadow:0 24px 64px rgba(0,0,0,.5);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;">
+          <div>
+            <div style="font-size:18px;font-weight:700;">✏️ Editar Serviço</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">${section.icon} ${section.name}</div>
+          </div>
+          <button onclick="document.getElementById('serviceEditModal').remove()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:18px;">
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:8px;">Nome do Serviço</label>
+            <input id="svcEditName" type="text" value="${item.name}"
+              style="width:100%;padding:12px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border .2s;"
+              onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--border)'">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:8px;">Descrição</label>
+            <textarea id="svcEditDesc" rows="3"
+              style="width:100%;padding:12px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-family:inherit;outline:none;resize:vertical;transition:border .2s;"
+              onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--border)'">${item.desc}</textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:8px;">Valor (R$)</label>
+              <div style="position:relative;">
+                <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text2);font-weight:600;">R$</span>
+                <input id="svcEditPrice" type="number" value="${item.price}" min="0" step="0.01"
+                  style="width:100%;padding:12px 16px 12px 36px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border .2s;"
+                  onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--border)'">
+              </div>
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:8px;">Período</label>
+              <select id="svcEditPeriod"
+                style="width:100%;padding:12px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-family:inherit;outline:none;cursor:pointer;appearance:none;transition:border .2s;"
+                onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--border)'">
+                <option value="Valor Único" ${item.period==='Valor Único'?'selected':''}>💳 Valor Único</option>
+                <option value="Mensal" ${item.period==='Mensal'?'selected':''}>🔄 Mensal</option>
+                <option value="Anual" ${item.period==='Anual'?'selected':''}>📅 Anual</option>
+                <option value="Trimestral" ${item.period==='Trimestral'?'selected':''}>🗓 Trimestral</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:28px;">
+          <button onclick="document.getElementById('serviceEditModal').remove()"
+            style="flex:1;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;">
+            Cancelar
+          </button>
+          <button onclick="saveServiceEdit('${sectionId}',${itemId})"
+            style="flex:2;padding:12px;background:linear-gradient(135deg,var(--purple),var(--blue));border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">
+            💾 Salvar Alterações
+          </button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
+    document.getElementById('svcEditName').focus();
+    return;
+  }
+}
+
+function saveServiceEdit(sectionId, itemId) {
+  const name  = document.getElementById('svcEditName')?.value.trim();
+  const desc  = document.getElementById('svcEditDesc')?.value.trim();
+  const price = parseFloat(document.getElementById('svcEditPrice')?.value) || 0;
+  const period= document.getElementById('svcEditPeriod')?.value || 'Valor Único';
+  if(!name) return;
+  for(const section of services) {
+    if(section.id !== sectionId) continue;
+    const item = section.items.find(i => i.id === itemId);
+    if(item) { item.name = name; item.desc = desc; item.price = price; item.period = period; }
+  }
+  saveServices(); renderServices();
+  document.getElementById('serviceEditModal')?.remove();
+}
+function addService(sectionId) {
+  const section = services.find(s => s.id === sectionId); if(!section) return;
+
+  const existing = document.getElementById('serviceEditModal');
+  if(existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'serviceEditModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);';
+  modal.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:32px;width:100%;max-width:480px;box-shadow:0 24px 64px rgba(0,0,0,.5);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;">
+        <div>
+          <div style="font-size:18px;font-weight:700;">➕ Novo Serviço</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">${section.icon} ${section.name}</div>
+        </div>
+        <button onclick="document.getElementById('serviceEditModal').remove()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:18px;">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:8px;">Nome do Serviço</label>
+          <input id="svcAddName" type="text" placeholder="Ex: Gestão de Reviews"
+            style="width:100%;padding:12px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border .2s;"
+            onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--border)'">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:8px;">Descrição</label>
+          <textarea id="svcAddDesc" rows="3" placeholder="Descreva o que está incluso neste serviço..."
+            style="width:100%;padding:12px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-family:inherit;outline:none;resize:vertical;transition:border .2s;"
+            onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:8px;">Valor (R$)</label>
+            <div style="position:relative;">
+              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text2);font-weight:600;">R$</span>
+              <input id="svcAddPrice" type="number" value="0" min="0" step="0.01"
+                style="width:100%;padding:12px 16px 12px 36px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border .2s;"
+                onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--border)'">
+            </div>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:8px;">Período</label>
+            <select id="svcAddPeriod"
+              style="width:100%;padding:12px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-family:inherit;outline:none;cursor:pointer;appearance:none;transition:border .2s;"
+              onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='var(--border)'">
+              <option value="Valor Único">💳 Valor Único</option>
+              <option value="Mensal">🔄 Mensal</option>
+              <option value="Anual">📅 Anual</option>
+              <option value="Trimestral">🗓 Trimestral</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:28px;">
+        <button onclick="document.getElementById('serviceEditModal').remove()"
+          style="flex:1;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;">
+          Cancelar
+        </button>
+        <button onclick="saveNewService('${sectionId}')"
+          style="flex:2;padding:12px;background:linear-gradient(135deg,var(--purple),var(--blue));border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">
+          ➕ Adicionar Serviço
+        </button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
+  document.getElementById('svcAddName').focus();
+}
+
+function saveNewService(sectionId) {
+  const section = services.find(s => s.id === sectionId); if(!section) return;
+  const name  = document.getElementById('svcAddName')?.value.trim();
+  const desc  = document.getElementById('svcAddDesc')?.value.trim() || '';
+  const price = parseFloat(document.getElementById('svcAddPrice')?.value) || 0;
+  const period= document.getElementById('svcAddPeriod')?.value || 'Valor Único';
+  if(!name) { document.getElementById('svcAddName').style.borderColor='var(--red2)'; return; }
+  section.items.push({ id: Date.now(), name, desc, price, period });
+  saveServices(); renderServices();
+  document.getElementById('serviceEditModal')?.remove();
+}
+function deleteService(sectionId, itemId) { if(!confirm('Excluir este serviço?')) return; const section = services.find(s => s.id === sectionId); if(section) { section.items = section.items.filter(i => i.id !== itemId); saveServices(); renderServices(); } }
+function resetServices() { if(confirm('Resetar para padrão? Isso apagará todos os preços editados.')) { services = getDefaultServices(); saveServices(); renderServices(); } }
+
+
+
+// ===================== PROPOSALS =====================
+function renderProposals() {
+  const list = document.getElementById('proposalsList'); const none = document.getElementById('noProposals');
+  if(!list || !none) return;
+  if(proposals.length === 0) { none.style.display = 'block'; list.innerHTML = ''; return; }
+  none.style.display = 'none';
+  list.innerHTML = proposals.map(p => {
+    const totalFmt = (p.total||0).toLocaleString('pt-BR', {minimumFractionDigits:2});
+    return `<div class="proposal-item">
+      <div class="proposal-avatar">${p.name[0].toUpperCase()}</div>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:600;">${p.name}</div>
+        <div style="font-size:12px;color:var(--text2);">${p.category} • ${p.date}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px;">${p.selectedCount||0} serviços selecionados</div>
+      </div>
+      <span class="badge badge-yellow">${p.status}</span>
+      <div style="font-size:16px;font-weight:700;color:var(--green2);margin-left:12px;">R$ ${totalFmt}</div>
+      <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px;margin-left:8px;" onclick="viewProposal(${p.id})">📄 Abrir</button>
+      <button class="btn btn-secondary" style="font-size:12px;padding:6px 8px;color:var(--red2);margin-left:4px;" onclick="deleteProposal(${p.id})">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+function generateProposalFromAnalysis(analysisId) {
+  const a = analyses.find(x => x.id === analysisId); if(!a) return;
+  const proposal = {
+    id: Date.now(), name: a.name, category: a.category, analysisId,
+    status: 'Rascunho', date: new Date().toLocaleDateString('pt-BR'),
+    total: 0, selectedCount: 0, analysisData: a
+  };
+  proposals.unshift(proposal); saveProposals(); renderProposals();
+  openProposalModal(proposal.id);
+}
+
+function generateNewProposal() {
+  if(analyses.length === 0) { alert('Faça pelo menos uma análise primeiro!'); goTo('nova-analise'); return; }
+  const select = analyses;
+  if(select.length === 1) { generateProposalFromAnalysis(select[0].id); return; }
+  const names = select.slice(0,10).map((a,i) => `${i+1}. ${a.name}`).join('\n');
+  const idx = prompt(`Escolha a análise (1-${Math.min(select.length,10)}):\n${names}`, '1');
+  if(!idx) return;
+  const a = select[parseInt(idx)-1]; if(!a) return;
+  generateProposalFromAnalysis(a.id);
+}
+
+function viewProposal(id) {
+  const p = proposals.find(x => x.id === id); if(!p) return;
+  openProposalModal(id);
+}
+
+function deleteProposal(id) {
+  if(!confirm('Excluir proposta?')) return;
+  proposals = proposals.filter(p => p.id !== id); saveProposals(); renderProposals();
+  const modal = document.getElementById('proposalModal');
+  if(modal) modal.remove();
+}
+
+function openProposalModal(proposalId) {
+  const p = proposals.find(x => x.id === proposalId); if(!p) return;
+  const a = p.analysisData || analyses.find(x => x.id === p.analysisId);
+
+  // Build diagnosis items from analysis
+  const diagItems = [];
+  if(a) {
+    const warnings = a.insights?.warnings || [];
+    const strengths = a.insights?.strengths || [];
+    const opportunities = a.insights?.opportunities || [];
+    warnings.filter(w => w.color === 'danger').forEach(w => diagItems.push({type:'danger', title: w.title, desc: w.desc, action: w.action}));
+    warnings.filter(w => w.color !== 'danger').forEach(w => diagItems.push({type:'warning', title: w.title, desc: w.desc, action: w.action}));
+    strengths.forEach(s => diagItems.push({type:'success', title: s.title, desc: s.desc}));
+    opportunities.forEach(o => diagItems.push({type:'info', title: o.title, desc: o.desc, action: o.action}));
+  }
+
+  // Build services list — all services with auto-recommend logic
+  const recommend = new Set();
+  if(a) {
+    if(!a.website) { recommend.add(201); recommend.add(202); recommend.add(203); }
+    if(a.photo_count < 7) { recommend.add(401); }
+    if(a.total_reviews < 50) { recommend.add(104); recommend.add(106); recommend.add(204); }
+    if(a.rating < 4.0 && a.rating > 0) { recommend.add(104); }
+    const pillars = a.pillars || {};
+    if((pillars.otimizacao?.pct||100) < 70) { recommend.add(101); recommend.add(102); }
+    if((pillars.saude_cadastral?.pct||100) < 80) { recommend.add(103); recommend.add(105); }
+    if((pillars.reputacao?.pct||100) < 70) { recommend.add(104); recommend.add(107); }
+    recommend.add(301); // always suggest identity
+  }
+
+  const allItems = [];
+  services.forEach(sec => sec.items.forEach(item => {
+    allItems.push({ ...item, sectionName: sec.name, sectionIcon: sec.icon, recommended: recommend.has(item.id) });
+  }));
+
+  // Restore saved selections if any
+  const savedSel = p.selectedItems || allItems.filter(i => i.recommended).map(i => i.id);
+
+  // Build modal HTML
+  const diagHtml = diagItems.map(d => {
+    const borderColor = d.type === 'danger' ? '#ef4444' : d.type === 'warning' ? '#e3b341' : d.type === 'success' ? '#238636' : '#388bfd';
+    const bg = d.type === 'danger' ? 'rgba(218,54,51,.07)' : d.type === 'warning' ? 'rgba(210,153,34,.07)' : d.type === 'success' ? 'rgba(35,134,54,.07)' : 'rgba(56,139,253,.07)';
+    const icon = d.type === 'danger' ? '🔴' : d.type === 'warning' ? '🟡' : d.type === 'success' ? '🟢' : '🔵';
+    return `<div style="border:1.5px solid ${borderColor};background:${bg};border-radius:8px;padding:12px 14px;margin-bottom:8px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;">${icon} ${d.title}</div>
+      <div style="font-size:12px;color:var(--text2);">${d.desc}</div>
+      ${d.action ? `<div style="font-size:12px;color:var(--blue2);margin-top:3px;">${d.action}</div>` : ''}
+    </div>`;
+  }).join('') || '<div style="color:var(--text2);font-size:13px;text-align:center;padding:20px">Nenhum problema crítico encontrado 🎉</div>';
+
+  let currentSec = '';
+  const servicesHtml = allItems.map(item => {
+    let groupHeader = '';
+    if(item.sectionName !== currentSec) {
+      currentSec = item.sectionName;
+      groupHeader = `<tr style="background:var(--bg3);"><td colspan="4" style="padding:8px 14px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--purple3);">${item.sectionIcon} ${item.sectionName}</td></tr>`;
+    }
+    const recBadge = item.recommended ? `<span style="font-size:9px;background:rgba(124,58,237,.2);color:var(--purple3);padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600;">RECOMENDADO</span>` : '';
+    const checked = savedSel.includes(item.id) ? 'checked' : '';
+    return groupHeader + `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:10px 14px;text-align:center;"><input type="checkbox" class="prop-chk" data-price="${item.price}" data-id="${item.id}" ${checked} onchange="recalcProposal(${proposalId})" style="width:16px;height:16px;accent-color:var(--purple);cursor:pointer;"></td>
+      <td style="padding:10px 14px;"><div style="font-size:13px;font-weight:500;color:var(--text);">${item.name}${recBadge}</div><div style="font-size:11px;color:var(--text2);margin-top:2px;">${item.desc}</div></td>
+      <td style="padding:10px 14px;font-size:11px;color:var(--text2);">${item.period}</td>
+      <td style="padding:10px 14px;text-align:right;font-size:13px;font-weight:600;color:var(--green2);white-space:nowrap;">R$ ${item.price.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+    </tr>`;
+  }).join('');
+
+  const scoreColor = a ? (a.score >= 80 ? '#22c55e' : a.score >= 60 ? '#f59e0b' : a.score >= 31 ? '#f97316' : '#ef4444') : '#8b949e';
+  const scoreLabel = a ? (a.score >= 80 ? 'Excelente' : a.score >= 60 ? 'Bom' : a.score >= 31 ? 'Fraco' : 'Crítico') : '';
+
+  const existingModal = document.getElementById('proposalModal');
+  if(existingModal) existingModal.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'proposalModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:#080c10;z-index:2000;overflow-y:auto;';
+  modal.innerHTML = `
+  <style>
+    @media print {
+      #prop-actions-bar { display:none!important; }
+      body > *:not(#proposalModal) { display:none!important; }
+      #proposalModal { position:static!important; }
+    }
+    .prop-row:hover { background:rgba(124,58,237,.04); }
+    .prop-chk-wrap { display:flex;align-items:center;justify-content:center; }
+    .prop-chk-wrap input[type=checkbox] { width:18px;height:18px;accent-color:#7c3aed;cursor:pointer; }
+    .disc-btn { padding:5px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text2);cursor:pointer;transition:all .15s; }
+    .disc-btn.active,.disc-btn:hover { background:var(--purple);border-color:var(--purple);color:#fff; }
+  </style>
+    <div style="max-width:1000px;margin:0 auto;padding:32px 28px 60px;">
+
+      <!-- TOP BAR -->
+      <div id="prop-actions-bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;padding:14px 20px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;position:sticky;top:16px;z-index:10;backdrop-filter:blur(12px);">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button onclick="document.getElementById('proposalModal').remove()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:13px;cursor:pointer;">← Fechar</button>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;letter-spacing:1.5px;">LOCAL<span style="color:#3fb950;">WAY</span></div>
+          <div style="width:1px;height:16px;background:var(--border);"></div>
+          <div style="font-size:12px;color:var(--text2);">Proposta <strong style="color:var(--text)">LW-${p.id.toString().slice(-5)}</strong></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="window.print()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:13px;cursor:pointer;">🖨️ PDF</button>
+          <button onclick="saveProposalSelections(${proposalId})" style="display:flex;align-items:center;gap:6px;padding:8px 18px;background:linear-gradient(135deg,#7c3aed,#2563eb);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">💾 Salvar</button>
+        </div>
+      </div>
+
+      <!-- HERO HEADER -->
+      <div style="border-radius:20px;overflow:hidden;margin-bottom:20px;position:relative;background:linear-gradient(135deg,#0a0f1a 0%,#0d1b0f 50%,#0a0f1a 100%);">
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at top left,rgba(124,58,237,.15) 0%,transparent 60%),radial-gradient(ellipse at bottom right,rgba(34,197,94,.1) 0%,transparent 60%);pointer-events:none;"></div>
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#7c3aed,#2563eb,#22c55e);"></div>
+        <div style="padding:40px 44px;position:relative;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:280px;">
+              <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:30px;padding:5px 14px;margin-bottom:20px;">
+                <span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>
+                <span style="font-size:11px;color:rgba(255,255,255,.6);letter-spacing:1.5px;font-weight:600;text-transform:uppercase;">Proposta Comercial</span>
+              </div>
+              <div style="font-size:13px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;font-weight:500;">Preparada para</div>
+              <div style="font-size:32px;font-weight:800;color:#fff;margin-bottom:6px;line-height:1.1;">${p.name}</div>
+              <div style="font-size:14px;color:#22c55e;font-weight:500;margin-bottom:4px;">📍 ${p.category}</div>
+              <div style="font-size:12px;color:rgba(255,255,255,.35);margin-top:12px;">Análise realizada em ${p.date} · Documento gerado pela Localway</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;align-items:flex-end;">
+              ${a ? `<div style="background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:20px 24px;text-align:center;min-width:140px;">
+                <div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Score GBP</div>
+                <div style="font-size:48px;font-weight:800;color:${scoreColor};line-height:1;">${a.score}</div>
+                <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px;">/ 100 pontos</div>
+                <div style="margin-top:8px;padding:4px 10px;background:${scoreColor}22;border-radius:20px;font-size:11px;color:${scoreColor};font-weight:600;">${scoreLabel}</div>
+              </div>` : ''}
+              <div style="background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 16px;text-align:right;">
+                <div style="font-size:10px;color:rgba(255,255,255,.3);letter-spacing:1px;margin-bottom:2px;">CÓDIGO</div>
+                <div style="font-size:14px;color:rgba(255,255,255,.7);font-weight:600;font-family:monospace;">LW-${p.id.toString().slice(-5)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MÉTRICAS RÁPIDAS -->
+      ${a ? `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+        ${[
+          ['⭐',a.rating>0?a.rating.toFixed(1)+' / 5.0':'N/A','Nota Google',a.rating>=4.5?'#22c55e':a.rating>=4?'#f59e0b':'#ef4444'],
+          ['💬',a.total_reviews.toLocaleString('pt-BR'),'Avaliações',a.total_reviews>=100?'#22c55e':a.total_reviews>=20?'#f59e0b':'#ef4444'],
+          ['📸',a.photo_count>=10?'10+ fotos':a.photo_count+' fotos','Mídia',a.photo_count>=7?'#22c55e':a.photo_count>=3?'#f59e0b':'#ef4444'],
+          ['🌐',a.website?'Cadastrado':'Sem site','Website',a.website?'#22c55e':'#ef4444'],
+        ].map(([ic,val,lbl,c])=>`
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:20px;position:relative;overflow:hidden;">
+            <div style="position:absolute;top:0;left:0;right:0;height:2px;background:${c};"></div>
+            <div style="font-size:22px;margin-bottom:10px;">${ic}</div>
+            <div style="font-size:18px;font-weight:700;color:${c};margin-bottom:3px;">${val}</div>
+            <div style="font-size:11px;color:var(--text2);">${lbl}</div>
+          </div>`).join('')}
+      </div>` : ''}
+
+      <!-- DIAGNÓSTICO -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:20px;">
+        <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(239,68,68,.15);display:flex;align-items:center;justify-content:center;font-size:18px;">🔍</div>
+          <div>
+            <div style="font-size:15px;font-weight:700;">Diagnóstico do Perfil</div>
+            <div style="font-size:12px;color:var(--text2);">Pontos identificados na análise</div>
+          </div>
+        </div>
+        <div style="padding:20px 24px;">
+          ${diagHtml}
+        </div>
+      </div>
+
+      <!-- TABELA DE SERVIÇOS -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:20px;">
+        <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(124,58,237,.15);display:flex;align-items:center;justify-content:center;font-size:18px;">💼</div>
+            <div>
+              <div style="font-size:15px;font-weight:700;">Soluções Recomendadas</div>
+              <div style="font-size:12px;color:var(--text2);" id="prop-sel-label-${proposalId}">Selecione os serviços desejados</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="selectAllProposal(${proposalId},true)" style="padding:7px 14px;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);border-radius:8px;color:var(--purple3);font-size:12px;font-weight:500;cursor:pointer;">✓ Todos</button>
+            <button onclick="selectAllProposal(${proposalId},false)" style="padding:7px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:12px;cursor:pointer;">✕ Limpar</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="background:rgba(0,0,0,.3);">
+                <th style="padding:11px 16px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;width:44px;"></th>
+                <th style="padding:11px 16px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;text-align:left;">Serviço</th>
+                <th style="padding:11px 16px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;text-align:left;white-space:nowrap;">Período</th>
+                <th style="padding:11px 16px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;text-align:right;white-space:nowrap;">Valor</th>
+              </tr>
+            </thead>
+            <tbody>${servicesHtml}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RESUMO FINANCEIRO -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+
+        <!-- INVESTIMENTO -->
+        <div style="background:linear-gradient(135deg,#071a0f,#0a0f1a);border:1px solid rgba(34,197,94,.2);border-radius:16px;padding:28px;">
+          <div style="font-size:12px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:20px;font-weight:600;">Resumo do Investimento</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);">
+            <span style="font-size:13px;color:rgba(255,255,255,.5);">Subtotal</span>
+            <span style="font-size:14px;color:#fff;font-weight:600;" id="prop-subtotal-${proposalId}">R$ 0,00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);gap:10px;">
+            <span style="font-size:13px;color:rgba(255,255,255,.5);flex-shrink:0;">Desconto</span>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;">
+              ${[0,5,10,15,20,25].map(v=>`<button class="disc-btn ${v===0?'active':''}" onclick="setDiscount(${proposalId},${v},this)">${v===0?'Nenhum':v+'%'}</button>`).join('')}
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);">
+            <span style="font-size:13px;color:#22c55e;">Desconto aplicado</span>
+            <span style="font-size:13px;color:#22c55e;font-weight:600;" id="prop-discval-${proposalId}">— R$ 0,00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 0 0;">
+            <span style="font-size:16px;font-weight:700;color:#fff;">Total</span>
+            <span style="font-size:28px;font-weight:800;color:#22c55e;" id="prop-total-${proposalId}">R$ 0,00</span>
+          </div>
+          <input type="hidden" id="prop-disc-${proposalId}" value="0">
+        </div>
+
+        <!-- PAGAMENTO -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px;">
+          <div style="font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:20px;font-weight:600;">Formas de Pagamento</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            ${[
+              ['💳','PIX à vista','+ 5% de desconto adicional','rgba(34,197,94,.08)','rgba(34,197,94,.2)'],
+              ['📅','Parcelado','Em até 12x sem juros','rgba(56,139,253,.08)','rgba(56,139,253,.2)'],
+              ['🏦','Boleto bancário','Vencimento em 5 dias úteis','rgba(255,255,255,.04)','rgba(255,255,255,.1)'],
+              ['🔄','Recorrente','Débito automático mensal','rgba(124,58,237,.08)','rgba(124,58,237,.2)'],
+            ].map(([ic,t,d,bg,brd])=>`
+              <div style="padding:12px 14px;background:${bg};border:1px solid ${brd};border-radius:10px;display:flex;align-items:center;gap:12px;">
+                <span style="font-size:20px;">${ic}</span>
+                <div>
+                  <div style="font-size:13px;font-weight:600;color:var(--text);">${t}</div>
+                  <div style="font-size:11px;color:var(--text2);margin-top:1px;">${d}</div>
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- IMPACTO ESPERADO -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:20px;">
+        <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(59,190,80,.15);display:flex;align-items:center;justify-content:center;font-size:18px;">🚀</div>
+          <div>
+            <div style="font-size:15px;font-weight:700;">Impacto Esperado</div>
+            <div style="font-size:12px;color:var(--text2);">Resultados que este plano gera para o seu negócio</div>
+          </div>
+        </div>
+        <div style="padding:20px 24px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+          ${[
+            ['🔍','Mais visibilidade','Perfil otimizado aparecendo nas buscas locais relevantes.','rgba(124,58,237,.1)','rgba(124,58,237,.3)'],
+            ['⭐','Mais avaliações','Estratégia de captação de reviews que gera autoridade.','rgba(234,179,8,.1)','rgba(234,179,8,.3)'],
+            ['💬','Mais leads','CTAs estratégicos convertendo visitas em contatos.','rgba(56,139,253,.1)','rgba(56,139,253,.3)'],
+            ['🏆','Autoridade de marca','Identidade profissional que transmite confiança.','rgba(239,68,68,.1)','rgba(239,68,68,.3)'],
+            ['📈','Mais vendas','Presença digital convertendo buscas em clientes reais.','rgba(34,197,94,.1)','rgba(34,197,94,.3)'],
+            ['👥','Clientes recorrentes','Processo contínuo de atração e retenção de clientes.','rgba(168,139,250,.1)','rgba(168,139,250,.3)'],
+          ].map(([ic,t,d,bg,brd])=>`
+            <div style="padding:16px;background:${bg};border:1px solid ${brd};border-radius:12px;">
+              <div style="font-size:24px;margin-bottom:10px;">${ic}</div>
+              <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:5px;">${t}</div>
+              <div style="font-size:11px;color:var(--text2);line-height:1.6;">${d}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- RODAPÉ ASSINATURA -->
+      <div style="border-radius:16px;overflow:hidden;position:relative;background:linear-gradient(135deg,#07110f,#0a0f1a);border:1px solid rgba(34,197,94,.15);">
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(34,197,94,.06) 0%,transparent 70%);pointer-events:none;"></div>
+        <div style="padding:32px;text-align:center;position:relative;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:800;letter-spacing:4px;margin-bottom:8px;">LOCAL<span style="color:#22c55e;">WAY</span></div>
+          <div style="font-size:11px;color:rgba(255,255,255,.3);letter-spacing:2px;text-transform:uppercase;margin-bottom:20px;">Marketing Digital e Crescimento Local</div>
+          <div style="max-width:520px;margin:0 auto 20px;font-size:14px;color:rgba(255,255,255,.45);line-height:1.8;font-style:italic;">"Empresas locais podem crescer através de presença digital estratégica, reputação online forte e processos modernos de captação de clientes."</div>
+          <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);border-radius:30px;padding:8px 20px;">
+            <span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>
+            <span style="font-size:12px;color:#22c55e;font-weight:600;">Proposta válida por 15 dias</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  recalcProposal(proposalId);
+}
+
+function setDiscount(proposalId, val, btn) {
+  const hidden = document.getElementById('prop-disc-'+proposalId);
+  if(hidden) hidden.value = val;
+  document.querySelectorAll('.disc-btn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  recalcProposal(proposalId);
+}
+
+function recalcProposal(proposalId) {
+  let sub = 0;
+  const checks = document.querySelectorAll('.prop-chk');
+  const selected = [];
+  checks.forEach(cb => { if(cb.checked) { sub += parseFloat(cb.dataset.price)||0; selected.push(parseInt(cb.dataset.id)); } });
+  const discSel = document.getElementById('prop-disc-'+proposalId);
+  const disc = discSel ? parseInt(discSel.value)||0 : 0;
+  const discVal = sub * disc / 100;
+  const total = sub - discVal;
+  const fmt = n => 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const sub_el = document.getElementById('prop-subtotal-'+proposalId);
+  const disc_el = document.getElementById('prop-discval-'+proposalId);
+  const tot_el = document.getElementById('prop-total-'+proposalId);
+  const lbl_el = document.getElementById('prop-sel-label-'+proposalId);
+  if(sub_el) sub_el.textContent = fmt(sub);
+  if(disc_el) disc_el.textContent = '- ' + fmt(discVal);
+  if(tot_el) tot_el.textContent = fmt(total);
+  if(lbl_el) lbl_el.textContent = selected.length + ' serviço' + (selected.length !== 1 ? 's' : '') + ' selecionado' + (selected.length !== 1 ? 's' : '') + ' — Total: ' + fmt(total);
+}
+
+function selectAllProposal(proposalId, checked) {
+  document.querySelectorAll('.prop-chk').forEach(cb => { cb.checked = checked; });
+  recalcProposal(proposalId);
+}
+
+function saveProposalSelections(proposalId) {
+  const p = proposals.find(x => x.id === proposalId); if(!p) return;
+  const selected = [];
+  let sub = 0;
+  document.querySelectorAll('.prop-chk').forEach(cb => { if(cb.checked) { sub += parseFloat(cb.dataset.price)||0; selected.push(parseInt(cb.dataset.id)); } });
+  const disc = parseInt(document.getElementById('prop-disc-'+proposalId)?.value||'0');
+  const total = sub * (1 - disc/100);
+  p.selectedItems = selected; p.total = total; p.selectedCount = selected.length; p.discount = disc;
+  saveProposals(); renderProposals();
+  alert('Proposta salva com sucesso!');
+}
+
+
+// ===================== MISC =====================
+function exportPDF() { window.print(); }
+function showPillarDetail(name) {}
+function setCrmPeriod(p, el) { document.querySelectorAll('#crm-metrics .filter-tab').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+function toggleDarkMode() {}
+
+// ===================== STORAGE =====================
+function saveAnalyses() { localStorage.setItem('gbp_analyses', JSON.stringify(analyses)); }
+function saveServices() { localStorage.setItem('gbp_services', JSON.stringify(services)); }
+function saveProposals() { localStorage.setItem('gbp_proposals', JSON.stringify(proposals)); }
+function saveCrm() { localStorage.setItem('gbp_crm', JSON.stringify(crmLeads)); }
+
+// ===================== LOADING =====================
+function showLoading(msg) { document.getElementById('loadingText').textContent = msg || 'Carregando...'; document.getElementById('loadingOverlay').style.display = 'flex'; }
+function updateLoading(msg) { document.getElementById('loadingText').textContent = msg; }
+function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>
