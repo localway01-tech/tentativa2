@@ -79,18 +79,46 @@ export default async function handler(req, res) {
     if (action === 'resolve_url') {
       if (!url) return res.status(400).json({ error: 'url obrigatório' });
 
-      // 1) place_id direto na URL
-      const m1 = url.match(/place_id[=:]([A-Za-z0-9_-]{10,})/);
-      if (m1) return res.status(200).json({ place_id: m1[1] });
-
-      // 2) URL longa com /maps/place/NOME/
-      const m2 = url.match(/maps\/place\/([^/@?&]+)/);
-      if (m2 && !/^[A-Za-z0-9]{20,}$/.test(m2[1])) {
-        const name = decodeURIComponent(m2[1].replace(/\+/g,' '));
-        return res.status(200).json(await gFetch(`${BASE}/textsearch/json?query=${encodeURIComponent(name)}&language=pt-BR&key=${KEY}`));
+      // Helper: extrai place_id de uma URL já expandida
+      function extractPlaceId(u) {
+        // place_id= ou place_id:
+        const m1 = u.match(/place_id[=:]([A-Za-z0-9_-]{10,})/);
+        if (m1) return m1[1];
+        // !1s0x... (hex place id embutido na URL longa do Maps)
+        const m2 = u.match(/!1s(0x[0-9a-fA-F]+:[0-9a-fA-F]+)/);
+        if (m2) return m2[1];
+        return null;
       }
 
-      // 3) Seguir redirects do link curto (maps.app.goo.gl)
+      // Helper: extrai coordenadas @lat,lng de uma URL
+      function extractCoords(u) {
+        const m = u.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+        return m ? { lat: m[1], lng: m[2] } : null;
+      }
+
+      // Helper: textsearch com localização obrigatória quando disponível
+      async function searchByNameAndCoords(name, coords) {
+        let apiUrl = `${BASE}/textsearch/json?query=${encodeURIComponent(name)}&language=pt-BR&key=${KEY}`;
+        if (coords) {
+          // location + radius restringe resultado à região do link
+          apiUrl += `&location=${coords.lat},${coords.lng}&radius=2000`;
+        }
+        return gFetch(apiUrl);
+      }
+
+      // 1) place_id direto na URL original
+      const pid1 = extractPlaceId(url);
+      if (pid1) return res.status(200).json({ place_id: pid1 });
+
+      // 2) URL longa com /maps/place/NOME/ — extrai coords antes de buscar
+      const m2 = url.match(/maps\/place\/([^/@?&]+)/);
+      if (m2 && !/^[A-Za-z0-9]{20,}$/.test(m2[1])) {
+        const name   = decodeURIComponent(m2[1].replace(/\+/g, ' '));
+        const coords = extractCoords(url);
+        return res.status(200).json(await searchByNameAndCoords(name, coords));
+      }
+
+      // 3) Seguir redirects do link curto (maps.app.goo.gl e similares)
       let current = url;
       for (let i = 0; i < 6; i++) {
         let resp;
@@ -106,14 +134,16 @@ export default async function handler(req, res) {
         if (loc) current = loc.startsWith('http') ? loc : new URL(loc, current).href;
         else current = resp.url || current;
 
-        // verifica a URL atual
-        const pid = current.match(/place_id[=:]([A-Za-z0-9_-]{10,})/);
-        if (pid) return res.status(200).json({ place_id: pid[1] });
+        // verifica place_id ou hex id na URL atual
+        const pid = extractPlaceId(current);
+        if (pid) return res.status(200).json({ place_id: pid });
 
+        // /maps/place/NOME/ — SEMPRE usa coords se disponível
         const nm = current.match(/maps\/place\/([^/@?&]+)/);
         if (nm && !/^[A-Za-z0-9]{20,}$/.test(nm[1])) {
-          const name = decodeURIComponent(nm[1].replace(/\+/g,' '));
-          return res.status(200).json(await gFetch(`${BASE}/textsearch/json?query=${encodeURIComponent(name)}&language=pt-BR&key=${KEY}`));
+          const name   = decodeURIComponent(nm[1].replace(/\+/g, ' '));
+          const coords = extractCoords(current);
+          return res.status(200).json(await searchByNameAndCoords(name, coords));
         }
 
         // CID (ex: ?cid=123456)
@@ -123,17 +153,18 @@ export default async function handler(req, res) {
           if (fp.candidates?.[0]) return res.status(200).json({ place_id: fp.candidates[0].place_id });
         }
 
-        // query param ?q=
+        // query param ?q= — SEMPRE usa coords se disponível
         const qp = current.match(/[?&]q=([^&]+)/);
         if (qp) {
-          const q = decodeURIComponent(qp[1].replace(/\+/g,' '));
-          return res.status(200).json(await gFetch(`${BASE}/textsearch/json?query=${encodeURIComponent(q)}&language=pt-BR&key=${KEY}`));
+          const q      = decodeURIComponent(qp[1].replace(/\+/g, ' '));
+          const coords = extractCoords(current);
+          return res.status(200).json(await searchByNameAndCoords(q, coords));
         }
 
         if (!loc) break; // sem mais redirects
       }
 
-      // 4) Última tentativa — coordenadas @lat,lng
+      // 4) Última tentativa — coordenadas @lat,lng (nearbysearch raio pequeno)
       const coord = current.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
       if (coord) {
         const data = await gFetch(`${BASE}/nearbysearch/json?location=${coord[1]},${coord[2]}&radius=50&rankby=distance&key=${KEY}`);
