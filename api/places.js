@@ -126,13 +126,33 @@ export default async function handler(req, res) {
           resp = await fetch(current, {
             method: 'GET',
             redirect: 'manual',
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36' }
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Mobile Safari/537.36',
+              'Accept-Language': 'pt-BR,pt;q=0.9'
+            }
           });
         } catch (e) { break; }
 
         const loc = resp.headers.get('location');
-        if (loc) current = loc.startsWith('http') ? loc : new URL(loc, current).href;
-        else current = resp.url || current;
+
+        // ── NOVO: tenta extrair place_id do body HTML (Google bloqueou redirect) ──
+        if (!loc) {
+          try {
+            const html = await resp.text();
+            // place_id em JSON embutido no HTML
+            const pm = html.match(/"place_id"\s*:\s*"([A-Za-z0-9_-]{10,})"/);
+            if (pm) return res.status(200).json({ place_id: pm[1] });
+            // URL canônica dentro do HTML
+            const um = html.match(/https:\/\/www\.google\.com\/maps\/place\/([^"\\]+)/);
+            if (um) {
+              current = 'https://www.google.com/maps/place/' + um[1];
+              continue;
+            }
+          } catch(_) {}
+          break;
+        }
+
+        current = loc.startsWith('http') ? loc : new URL(loc, current).href;
 
         // verifica place_id ou hex id na URL atual
         const pid = extractPlaceId(current);
